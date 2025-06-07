@@ -17,3 +17,4 @@ anstyle = { workspace = true }
 marston-core = { workspace = true }
 camino = { workspace = true }
 glob = "0.3.2"
+rayon = { workspace = true }

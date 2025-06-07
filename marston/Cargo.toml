@@ -9,6 +9,8 @@ serde = { workspace = true, features = ["derive"] }
 toml = { workspace = true }
 fs-err = { workspace = true }
 camino = { workspace = true, features = ["serde1"] }
+ariadne = { workspace = true }
+logos = "0.15.0"
 
 [lints]
 workspace = true
