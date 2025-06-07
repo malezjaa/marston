@@ -1,0 +1,21 @@
+head {
+    .title = "Test",
+    .lang = "en",
+    .description = "This is a sample Marston page with head and body elements.",
+    .stylesheets = ["styles.css"],
+    .scripts = ["script.js"]
+}
+
+body {
+    header(.class = "site-header") {
+        { "Welcome to Marston!" }
+    },
+    main(.class = "content") {
+        h1 { "Hello World" },
+        p { "This is the main content area." },
+        img(.src = "hero.jpg", .alt = "Hero Image")
+    },
+    footer(.class = "site-footer") {
+        { "© 2025 Marston Project" }
+    }
+}
