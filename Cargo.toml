@@ -1,6 +1,22 @@
 [workspace]
 resolver = "3"
-members = ["cli"]
+members = ["cli", "marston"]
+
+[workspace.dependencies]
+anyhow = "1.0.98"
+clap = "4.5.39"
+fern = { version = "0.7.1", features = ["colored"] }
+log = "0.4.27"
+thiserror = "2.0.12"
+backtrace = "0.3.75"
+colored = "3.0.0"
+sysinfo = "0.35.2"
+terminal_size = "0.4.2"
+anstyle = "1.0.11"
+marston = { path = "marston" }
+serde = "1.0.219"
+toml = "0.8.23"
+fs-err = "3.1.0"
 
 [workspace.lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

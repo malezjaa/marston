@@ -8,16 +8,26 @@
       <package file="$PROJECT_DIR$/cli">
         <enabledFeature name="default" />
       </package>
+      <package file="$PROJECT_DIR$/marston">
+        <enabledFeature name="default" />
+      </package>
     </cargoProject>
   </component>
   <component name="ChangeListManager">
     <list default="true" id="85bd2174-70fd-481d-b672-ab496e62892a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/marston.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/cli/src/clap.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cli/src/commands/build.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cli/src/commands/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/marston/src/config.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/marston/src/context.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/marston/src/fs.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cli/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/cli/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cli/src/error.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cli/src/logger.rs" beforeDir="false" afterPath="$PROJECT_DIR$/cli/src/logger.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cli/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/cli/src/main.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,7 +109,7 @@
       <option name="presentableId" value="Default" />
       <updated>1749243030979</updated>
       <workItem from="1749243032662" duration="2454000" />
-      <workItem from="1749283378956" duration="1016000" />
+      <workItem from="1749283378956" duration="8641000" />
     </task>
     <servers />
   </component>

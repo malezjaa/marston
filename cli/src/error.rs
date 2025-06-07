@@ -1,1 +1,0 @@
-pub type MResult<T> = anyhow::Result<T>;

@@ -1,8 +1,7 @@
-use crate::error::MResult;
 use fern::Dispatch;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::LevelFilter;
-use std::str::FromStr;
+use marston::MResult;
 
 pub fn init_logger() -> MResult<()> {
     let colors = ColoredLevelConfig::new()
@@ -17,10 +16,8 @@ pub fn init_logger() -> MResult<()> {
             let level = record.level();
 
             let colored_level = colors.color(level).to_string();
-            let colored_level = colored_level
-                .chars()
-                .map(|c| c.to_ascii_lowercase())
-                .collect::<String>();
+            let colored_level =
+                colored_level.chars().map(|c| c.to_ascii_lowercase()).collect::<String>();
 
             out.finish(format_args!(
                 "{colored_level} {message}",
