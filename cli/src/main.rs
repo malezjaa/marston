@@ -3,11 +3,13 @@ use crate::commands::build::build_command;
 use crate::logger::init_logger;
 use crate::panic::setup_panic_handler;
 use anyhow::bail;
-use marston::MResult;
-use marston::context::Context;
+use log::{error, info};
+use marston_core::context::Context;
+use marston_core::{MPath, MResult};
 use std::env;
 use std::path::Path;
 use std::process::exit;
+use marston_core::fs::to_mpath;
 
 mod clap;
 mod commands;
@@ -31,9 +33,12 @@ fn main() -> MResult<()> {
         }
     };
     let c_dir = env::current_dir()?;
-    let context = Context::new(c_dir)?;
+    let context = Context::new(&to_mpath(c_dir)?)?;
+    info!("current project: {}", context.name());
 
-    execute(context, cmd)?;
+    if let Err(err) = execute(context, cmd) {
+        error!("{err}");
+    }
 
     Ok(())
 }

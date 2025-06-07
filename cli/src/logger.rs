@@ -1,7 +1,7 @@
 use fern::Dispatch;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::LevelFilter;
-use marston::MResult;
+use marston_core::MResult;
 
 pub fn init_logger() -> MResult<()> {
     let colors = ColoredLevelConfig::new()

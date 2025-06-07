@@ -41,8 +41,8 @@ doc:
 doc:
     $Env:RUSTDOCFLAGS='-D warnings'; cargo doc --no-deps --document-private-items
 
-run args='':
-    cd playground; cargo run -p brim-cli run {{ args }}
+build args='':
+    cd playground; cargo run -p marston build {{ args }}
 
 docs:
     cd docs; bun dev

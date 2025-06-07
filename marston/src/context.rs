@@ -1,16 +1,18 @@
-use std::path::{Path, PathBuf};
+use crate::{MPath, MResult};
 use crate::config::Config;
-use crate::MResult;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct Context {
-    config: Config
+    config: Config,
 }
 
 impl Context {
-    pub fn new(cwd: PathBuf) -> MResult<Self> {
-        Ok(Context {
-            config: Config::find_recursively(cwd)?
-        })
+    pub fn new(cwd: &MPath) -> MResult<Self> {
+        Ok(Context { config: Config::find_recursively(cwd)? })
+    }
+
+    pub fn name(&self) -> String {
+        self.config.project.name.clone()
     }
 }
