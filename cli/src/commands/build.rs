@@ -10,9 +10,7 @@ pub fn build_command(ctx: Context) -> MResult<()> {
         .filter_map(|path_buf| to_mpath(path_buf).ok())
         .collect::<Vec<_>>();
 
-    files.par_iter().for_each(|file| {
-        ctx.process_file(file);
-    });
+    files.par_iter().try_for_each(|file| ctx.process_file(file))?;
 
     Ok(())
 }

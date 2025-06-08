@@ -1,8 +1,13 @@
 use crate::config::Config;
 use crate::fs::read_string;
 use crate::lexer::Token;
-use crate::{MPath, MResult};
+use crate::reports::ReportsBag;
+use crate::{MPath, MResult, error_report};
+use ariadne::Label;
+use ariadne::ReportKind;
+use ariadne::{Color, Fmt, Report};
 use logos::Logos;
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub struct Context {
@@ -29,8 +34,11 @@ impl Context {
 
     pub fn process_file(&self, file: &MPath) -> MResult<()> {
         let content = read_string(file)?;
-        let tokens = Token::get_tokens(content.as_str());
 
+        let mut bag = ReportsBag::new(file, content.as_str());
+        let tokens = Token::get_tokens(&content);
+
+        bag.print();
         Ok(())
     }
 }

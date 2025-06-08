@@ -39,7 +39,7 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn get_tokens(str: &str) -> Vec<Token> {
-        Self::lexer(str).filter_map(|op| op.ok()).collect::<Vec<_>>()
+    pub fn get_tokens(str: &String) -> Vec<Token> {
+        Self::lexer(&str).filter_map(|op| op.ok()).collect::<Vec<_>>()
     }
 }
