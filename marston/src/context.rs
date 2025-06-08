@@ -53,9 +53,10 @@ impl Context {
         let tokens = TokenKind::get_tokens(&content);
 
         let mut parser = Parser::new(self, tokens);
-        let doc = parser.parse();
+        parser.parse();
         bag.extend(parser.bag);
-
+        let doc = parser.doc.clone();
+        
         bag.print();
         Ok(())
     }

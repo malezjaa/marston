@@ -5,6 +5,8 @@ use std::ops::Range;
 
 #[derive(Debug, Logos, Clone, PartialEq)]
 #[logos(skip r"[ \t\r\n\f]+")]
+#[logos(skip r"//[^\n]*")]
+#[logos(skip r"/\*[^*]*\*+([^/*][^*]*\*+)*/")]
 pub enum TokenKind {
     #[token("false", |_| false)]
     #[token("true", |_| true)]

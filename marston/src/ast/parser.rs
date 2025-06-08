@@ -13,17 +13,26 @@ pub struct Parser<'a> {
     pub bump: Bump,
     pub current: usize,
     pub bag: TemporaryBag<'a>,
+    pub doc: MarstonDocument,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(ctx: &'a Context, tokens: Vec<Token>) -> Self {
-        Self { ctx, tokens, bump: Bump::new(), current: 0, bag: TemporaryBag::new() }
+        Self {
+            ctx,
+            tokens,
+            bump: Bump::new(),
+            current: 0,
+            bag: TemporaryBag::new(),
+            doc: MarstonDocument::new(),
+        }
     }
 
-    pub fn parse(&mut self) -> MarstonDocument {
-        self.consume(&TokenKind::BracketOpen, "expected opening bracket");
-
-        MarstonDocument::new()
+    pub fn parse(&mut self) {
+        while !self.is_at_end() {
+            self.consume(&TokenKind::Dot, "document always expects blocks at top-level");
+            break;
+        }
     }
 
     pub fn advance(&mut self) -> Option<&Token> {

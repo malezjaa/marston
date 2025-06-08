@@ -7,18 +7,18 @@ pub mod parser;
 
 #[derive(Debug, Clone)]
 pub struct MarstonDocument {
-    pub elements: Vec<Element>,
+    pub blocks: Vec<Block>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Node {
-    Element(Element),
+    Block(Block),
     Text(String),
     Comment(String),
 }
 
 #[derive(Debug, Clone)]
-pub struct Element {
+pub struct Block {
     pub name: Spur,
     pub attributes: FxHashMap<Spur, AttributeValue>,
     pub children: Vec<Node>,
@@ -35,23 +35,23 @@ pub enum AttributeValue {
 
 impl MarstonDocument {
     pub fn new() -> Self {
-        Self { elements: Vec::new() }
+        Self { blocks: Vec::new() }
     }
 
-    pub fn add_element(&mut self, element: Element) {
-        self.elements.push(element);
+    pub fn add_block(&mut self, block: Block) {
+        self.blocks.push(block);
     }
 
-    pub fn find_element_by_name(&self, name: Spur) -> Option<&Element> {
-        self.elements.iter().find(|e| e.name == name)
+    pub fn find_block_by_name(&self, name: Spur) -> Option<&Block> {
+        self.blocks.iter().find(|e| e.name == name)
     }
 
-    pub fn find_elements_by_name(&self, name: Spur) -> Vec<&Element> {
-        self.elements.iter().filter(|e| e.name == name).collect()
+    pub fn find_blocks_by_name(&self, name: Spur) -> Vec<&Block> {
+        self.blocks.iter().filter(|e| e.name == name).collect()
     }
 }
 
-impl Element {
+impl Block {
     pub fn new(name: Spur) -> Self {
         Self { name, attributes: FxHashMap::default(), children: Vec::new(), span: None }
     }
@@ -76,26 +76,26 @@ impl Element {
         self.children.push(Node::Text(text));
     }
 
-    pub fn add_element(&mut self, element: Element) {
-        self.children.push(Node::Element(element));
+    pub fn add_block(&mut self, block: Block) {
+        self.children.push(Node::Block(block));
     }
 
-    pub fn find_child_element(&self, name: Spur) -> Option<&Element> {
+    pub fn find_child_block(&self, name: Spur) -> Option<&Block> {
         self.children.iter().find_map(|child| {
-            if let Node::Element(element) = child {
-                if element.name == name { Some(element) } else { None }
+            if let Node::Block(block) = child {
+                if block.name == name { Some(block) } else { None }
             } else {
                 None
             }
         })
     }
 
-    pub fn find_child_elements(&self, name: Spur) -> Vec<&Element> {
+    pub fn find_child_blocks(&self, name: Spur) -> Vec<&Block> {
         self.children
             .iter()
             .filter_map(|child| {
-                if let Node::Element(element) = child {
-                    if element.name == name { Some(element) } else { None }
+                if let Node::Block(block) = child {
+                    if block.name == name { Some(block) } else { None }
                 } else {
                     None
                 }

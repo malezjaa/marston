@@ -1,7 +1,7 @@
 .head {
     .title = "Test",
     .lang = "en",
-    .description = "This is a sample Marston page with head and body elements.",
+    .description = "This is a sample Marston page with head and body blocks.",
     .stylesheets = ["styles.css"],
     .scripts = ["script.js"]
 }
