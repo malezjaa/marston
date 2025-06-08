@@ -1,7 +1,7 @@
+use crate::MPath;
 use ariadne::{Report, Source};
 use std::borrow::Cow;
 use std::ops::Range;
-use crate::MPath;
 
 pub type MReport<'a> = Report<'a, (&'a MPath, Range<usize>)>;
 
@@ -26,6 +26,26 @@ impl<'a> ReportsBag<'a> {
             report.print((self.file_name, Source::from(self.source_content))).unwrap();
         })
     }
+
+    pub fn extend(&mut self, temp: TemporaryBag<'a>) {
+        self.reports.extend(temp.reports);
+    }
+}
+
+#[derive(Debug)]
+// ReportsBag will later extend this
+pub struct TemporaryBag<'a> {
+    reports: Vec<MReport<'a>>,
+}
+
+impl<'a> TemporaryBag<'a> {
+    pub fn new() -> Self {
+        Self { reports: Vec::new() }
+    }
+
+    pub fn add(&mut self, report: MReport<'a>) {
+        self.reports.push(report);
+    }
 }
 
 #[macro_export]
@@ -42,6 +62,7 @@ macro_rules! error_report {
         $(, notes: [$($note:expr),* $(,)?])?
         $(,)?
     ) => {{
+        #[allow(unused_mut)]
         let mut report = Report::build(ReportKind::Error, ($file, $span))
             .with_message($message);
 

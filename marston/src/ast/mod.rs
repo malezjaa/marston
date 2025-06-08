@@ -1,8 +1,9 @@
-use lasso::{Key, Spur};
-use std::collections::HashMap;
 use crate::Span;
+use lasso::{Key, Spur};
+use rustc_hash::FxHashMap;
 
 pub mod ident_table;
+pub mod parser;
 
 #[derive(Debug, Clone)]
 pub struct MarstonDocument {
@@ -19,7 +20,7 @@ pub enum Node {
 #[derive(Debug, Clone)]
 pub struct Element {
     pub name: Spur,
-    pub attributes: HashMap<Spur, AttributeValue>,
+    pub attributes: FxHashMap<Spur, AttributeValue>,
     pub children: Vec<Node>,
     pub span: Option<Span>,
 }
@@ -52,10 +53,10 @@ impl MarstonDocument {
 
 impl Element {
     pub fn new(name: Spur) -> Self {
-        Self { name, attributes: HashMap::new(), children: Vec::new(), span: None }
+        Self { name, attributes: FxHashMap::default(), children: Vec::new(), span: None }
     }
 
-    pub fn with_attributes(name: Spur, attributes: HashMap<Spur, AttributeValue>) -> Self {
+    pub fn with_attributes(name: Spur, attributes: FxHashMap<Spur, AttributeValue>) -> Self {
         Self { name, attributes, children: Vec::new(), span: None }
     }
 

@@ -1,8 +1,11 @@
 use logos::{Lexer, Logos, Span};
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::ops::Range;
 
-#[derive(Debug, Logos)]
+#[derive(Debug, Logos, Clone, PartialEq)]
 #[logos(skip r"[ \t\r\n\f]+")]
-pub enum Token {
+pub enum TokenKind {
     #[token("false", |_| false)]
     #[token("true", |_| true)]
     Bool(bool),
@@ -38,8 +41,56 @@ pub enum Token {
     Identifier(String),
 }
 
-impl Token {
-    pub fn get_tokens(str: &String) -> Vec<Token> {
-        Self::lexer(&str).filter_map(|op| op.ok()).collect::<Vec<_>>()
+impl Display for TokenKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use TokenKind::*;
+
+        match self {
+            Bool(true) => write!(f, "true"),
+            Bool(false) => write!(f, "false"),
+            BraceOpen => write!(f, "{{"),
+            BraceClose => write!(f, "}}"),
+            BracketOpen => write!(f, "["),
+            BracketClose => write!(f, "]"),
+            Dot => write!(f, "."),
+            Equals => write!(f, "="),
+            Comma => write!(f, ","),
+            Number(n) => write!(f, "{}", n),
+            String(s) => write!(f, "{}", s),
+            Identifier(ident) => write!(f, "{}", ident),
+        }
+    }
+}
+
+impl TokenKind {
+    pub fn get_tokens(input: &str) -> Vec<Token> {
+        let mut lexer = TokenKind::lexer(input);
+        let mut tokens = Vec::new();
+
+        while let Some(token) = lexer.next() {
+            if let Ok(token) = token {
+                tokens.push(Token { kind: token, span: lexer.span() });
+            }
+        }
+
+        tokens
+    }
+}
+
+#[derive(Debug)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Range<usize>,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
+    }
+}
+
+impl PartialEq for Token {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
     }
 }

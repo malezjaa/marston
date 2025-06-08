@@ -21,6 +21,8 @@ camino = "1.1.10"
 rayon = "1.10.0"
 ariadne = "0.5.1"
 lasso = "0.7.3"
+rustc-hash = "2.1.1"
+bumpalo = "3.18.1"
 
 [workspace.lints.rust]
 absolute_paths_not_starting_with_crate = "warn"
