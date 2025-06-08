@@ -20,6 +20,7 @@ fs-err = "3.1.0"
 camino = "1.1.10"
 rayon = "1.10.0"
 ariadne = "0.5.1"
+lasso = "0.7.3"
 
 [workspace.lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

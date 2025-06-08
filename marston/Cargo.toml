@@ -11,6 +11,7 @@ fs-err = { workspace = true }
 camino = { workspace = true, features = ["serde1"] }
 ariadne = { workspace = true }
 logos = "0.15.0"
+lasso = { workspace = true }
 
 [lints]
 workspace = true

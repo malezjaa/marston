@@ -1,23 +1,27 @@
+use crate::ast::ident_table::IdentTable;
 use crate::config::Config;
 use crate::fs::read_string;
 use crate::lexer::Token;
 use crate::reports::ReportsBag;
-use crate::{MPath, MResult, error_report};
-use ariadne::Label;
-use ariadne::ReportKind;
-use ariadne::{Color, Fmt, Report};
+use crate::{MPath, MResult};
 use logos::Logos;
-use std::borrow::Cow;
 
 #[derive(Debug)]
-pub struct Context {
+pub struct Context<'a> {
     config: Config,
     cwd: MPath,
+    bag: Option<ReportsBag<'a>>,
+    ident_table: IdentTable,
 }
 
-impl Context {
+impl<'a> Context<'a> {
     pub fn new(cwd: &MPath) -> MResult<Self> {
-        Ok(Context { config: Config::find_recursively(cwd)?, cwd: cwd.clone() })
+        Ok(Context {
+            config: Config::find_recursively(cwd)?,
+            cwd: cwd.clone(),
+            bag: None,
+            ident_table: IdentTable::new(),
+        })
     }
 
     pub fn name(&self) -> String {
@@ -30,6 +34,14 @@ impl Context {
 
     pub fn main_dir(&self) -> &MPath {
         &self.config.build.main_dir
+    }
+
+    pub fn current_bag(&self) -> &ReportsBag {
+        self.bag.as_ref().expect("reports bag is not set")
+    }
+
+    pub fn table(&self) -> &IdentTable {
+        &self.ident_table
     }
 
     pub fn process_file(&self, file: &MPath) -> MResult<()> {
