@@ -11,7 +11,6 @@ use logos::Logos;
 pub struct Context {
     config: Config,
     cwd: MPath,
-    ident_table: IdentTable,
     current_file: Option<MPath>,
 }
 
@@ -20,7 +19,6 @@ impl Context {
         Ok(Context {
             config: Config::find_recursively(cwd)?,
             cwd: cwd.clone(),
-            ident_table: IdentTable::new(),
             current_file: None,
         })
     }
@@ -35,10 +33,6 @@ impl Context {
 
     pub fn main_dir(&self) -> &MPath {
         &self.config.build.main_dir
-    }
-
-    pub fn table(&self) -> &IdentTable {
-        &self.ident_table
     }
 
     pub fn file(&self) -> &MPath {
@@ -56,7 +50,7 @@ impl Context {
         parser.parse();
         bag.extend(parser.bag);
         let doc = parser.doc.clone();
-        
+
         bag.print();
         Ok(())
     }

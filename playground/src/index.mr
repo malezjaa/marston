@@ -1,4 +1,4 @@
-.head {
+.head(.test = "dwa" dwa)
     .title = "Test",
     .lang = "en",
     .description = "This is a sample Marston page with head and body blocks.",

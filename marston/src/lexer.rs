@@ -24,6 +24,12 @@ pub enum TokenKind {
     #[token("]")]
     BracketClose,
 
+    #[token("(")]
+    ParenOpen,
+
+    #[token(")")]
+    ParenClose,
+
     #[token(".")]
     Dot,
 
@@ -54,6 +60,8 @@ impl Display for TokenKind {
             BraceClose => write!(f, "}}"),
             BracketOpen => write!(f, "["),
             BracketClose => write!(f, "]"),
+            ParenOpen => write!(f, "("),
+            ParenClose => write!(f, ")"),
             Dot => write!(f, "."),
             Equals => write!(f, "="),
             Comma => write!(f, ","),
@@ -79,7 +87,7 @@ impl TokenKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Range<usize>,

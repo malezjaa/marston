@@ -46,6 +46,10 @@ impl<'a> TemporaryBag<'a> {
     pub fn add(&mut self, report: MReport<'a>) {
         self.reports.push(report);
     }
+
+    pub fn has_errors(&self) -> bool {
+        !self.reports.is_empty()
+    }
 }
 
 #[macro_export]

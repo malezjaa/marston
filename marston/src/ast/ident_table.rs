@@ -1,13 +1,14 @@
-use lasso::{Rodeo, Spur};
+use lasso::{Rodeo, Spur, ThreadedRodeo};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
-#[derive(Debug)]
 pub struct IdentTable {
-    interner: Rodeo,
+    interner: ThreadedRodeo,
 }
 
 impl IdentTable {
     pub fn new() -> Self {
-        Self { interner: Rodeo::default() }
+        Self { interner: ThreadedRodeo::default() }
     }
 
     pub fn intern(&mut self, name: &str) -> Spur {
@@ -17,4 +18,16 @@ impl IdentTable {
     pub fn resolve(&self, sym: Spur) -> &str {
         self.interner.resolve(&sym)
     }
+}
+
+pub static GLOBAL_TABLE: Lazy<Mutex<IdentTable>> = Lazy::new(|| Mutex::new(IdentTable::new()));
+
+#[inline]
+pub fn intern(name: &str) -> Spur {
+    GLOBAL_TABLE.lock().unwrap().intern(name)
+}
+
+#[inline]
+pub fn resolve(sym: Spur) -> String {
+    GLOBAL_TABLE.lock().unwrap().resolve(sym).to_string()
 }
