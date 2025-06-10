@@ -1,11 +1,13 @@
 use crate::{
     MPath, MResult,
-    ast::{ident_table::IdentTable, parser::Parser},
+    ast::{MarstonDocument, ident_table::IdentTable, parser::Parser},
+    codegen::{Codegen, Gen},
     config::Config,
     fs::read_string,
     lexer::{Token, TokenKind},
     reports::ReportsBag,
 };
+use log::error;
 use logos::Logos;
 
 #[derive(Debug)]
@@ -48,7 +50,24 @@ impl Context {
         bag.extend(parser.bag);
         let doc = parser.doc.clone();
 
+        let file_name = file.strip_prefix(self.main_dir())?;
+        let file = self.build_dir().join(file_name).with_extension("html");
         bag.print();
+
+        if bag.has_errors() {
+            error!("Returning errors because of errors in compilation.");
+            return Ok(());
+        }
+
+        let codegen = &mut Codegen::new();
+        doc.generate(codegen);
+
+        codegen.write_to_file(&file)?;
+
+        Ok(())
+    }
+
+    pub fn codegen(&self, file: MPath, doc: MarstonDocument) -> MResult<()> {
         Ok(())
     }
 }

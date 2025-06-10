@@ -13,8 +13,6 @@ pub fn build_command(ctx: Context) -> MResult<()> {
 
     let ctx = Arc::new(Mutex::new(ctx));
     files.par_iter().try_for_each(|file| {
-        let ctx = ctx.clone();
-        let file = file.clone();
         let mut ctx = ctx.lock().unwrap();
         ctx.process_file(&file)
     })?;

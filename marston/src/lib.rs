@@ -3,6 +3,7 @@ use camino::Utf8PathBuf;
 use std::ops::Range;
 
 mod ast;
+mod codegen;
 pub mod config;
 pub mod context;
 pub mod fs;

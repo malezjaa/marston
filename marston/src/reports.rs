@@ -1,7 +1,6 @@
 use crate::MPath;
 use ariadne::{Report, Source};
-use std::borrow::Cow;
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
 pub type MReport<'a> = Report<'a, (&'a MPath, Range<usize>)>;
 
@@ -29,6 +28,10 @@ impl<'a> ReportsBag<'a> {
 
     pub fn extend(&mut self, temp: TemporaryBag<'a>) {
         self.reports.extend(temp.reports);
+    }
+
+    pub fn has_errors(&self) -> bool {
+        !self.reports.is_empty()
     }
 }
 

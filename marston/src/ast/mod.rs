@@ -14,7 +14,6 @@ pub struct MarstonDocument {
 pub enum Node {
     Block(Block),
     Text(String),
-    Comment(String),
 }
 
 #[derive(Debug, Clone)]
