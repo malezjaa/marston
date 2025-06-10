@@ -1,9 +1,17 @@
 use glob::glob;
-use marston_core::{MPath, MResult, context::Context, fs::to_mpath};
+use marston_core::{
+    MPath, MResult,
+    context::Context,
+    fs::{clear_dir, to_mpath},
+};
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
 pub fn build_command(ctx: Context) -> MResult<()> {
+    if ctx.build_dir().exists() {
+        clear_dir(ctx.build_dir())?;
+    }
+
     let pattern = format!("{}/**/*.mr", ctx.main_dir());
 
     let files: Vec<MPath> = glob(&pattern)?
