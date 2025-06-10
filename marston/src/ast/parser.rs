@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Block, MarstonDocument, Value, ident_table::intern},
+    ast::{Block, MarstonDocument, Node, Value, ident_table::intern},
     context::Context,
     error_report,
     lexer::{Token, TokenKind},
@@ -80,83 +80,58 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if !self
-            .consume_with_span(
-                &TokenKind::BraceOpen,
-                "Blocks should be followed by a brace",
-                self.previous().unwrap().span.to_start().move_by(1),
-            )
-            .is_some()
-        {
-            self.skip_until(&[TokenKind::BraceOpen, TokenKind::BraceClose]);
-            if self.check(&TokenKind::BraceOpen) {
-                self.advance();
-            } else {
-                return block;
-            }
-        }
+        if self.check(&TokenKind::BraceOpen) {
+            self.advance();
 
-        let mut children = Vec::new();
+            let mut children = Vec::new();
 
-        while !self.check(&TokenKind::BraceClose) && !self.is_at_end() {
-            if self.current().kind == TokenKind::Dot {
-                if let Some(ahead) = self.peek_ahead(1) {
-                    match ahead.kind {
-                        TokenKind::Equals => {
-                            // This is a block-level attribute
-                            let attr = self.parse_attr();
-                            if let Some((attr_name, attr_value)) = attr {
-                                attrs.insert(attr_name, attr_value);
+            while !self.check(&TokenKind::BraceClose) && !self.is_at_end() {
+                if self.current().kind == TokenKind::Dot {
+                    if let Some(ahead) = self.peek_ahead(2) {
+                        match ahead.kind {
+                            TokenKind::Equals => {
+                                let attr = self.parse_attr();
+                                if let Some((attr_name, attr_value)) = attr {
+                                    attrs.insert(attr_name, attr_value);
+                                }
                             }
-
-                            // Consume optional comma after attribute
-                            self.match_token(&TokenKind::Comma);
+                            _ => {
+                                let child = self.parse_block();
+                                children.push(Node::Block(child));
+                            }
                         }
-                        _ => {
-                            // This is a child block
-                            let child = self.parse_block();
-                            children.push(child);
 
-                            // Consume optional comma after child block
-                            self.match_token(&TokenKind::Comma);
-                        }
+                        self.match_token(&TokenKind::Comma);
+                    } else {
+                        self.error_at_current("Unexpected end of input after '.'");
+                        break;
                     }
+                } else if let TokenKind::String(string) = &self.current().kind {
+                    children.push(Node::Text(string.clone()));
+                    self.advance();
+                    self.match_token(&TokenKind::Comma);
                 } else {
-                    self.error_at_current("Unexpected end of input after '.'");
-                    break;
-                }
-            } else if self.check(&TokenKind::BraceOpen) {
-                // This might be a text content block { "some text" }
-                self.advance(); // consume opening brace
-
-                // For now, skip content until closing brace
-                // You'll want to implement proper text content parsing here
-                while !self.check(&TokenKind::BraceClose) && !self.is_at_end() {
+                    self.error_at_current(
+                        "Invalid block children. Expected a block, an attribute, or content",
+                    );
                     self.advance();
                 }
+            }
 
-                if self.check(&TokenKind::BraceClose) {
-                    self.advance(); // consume closing brace
-                }
+            self.consume(&TokenKind::BraceClose, "Blocks should end in a brace");
 
-                // Consume optional comma after content block
-                self.match_token(&TokenKind::Comma);
-            } else {
-                self.error_at_current(
-                    "Invalid block children. Expected a block, an attribute, or content",
-                );
-                self.advance(); // try to recover by skipping the problematic token
+            if !children.is_empty() {
+                block.children = children;
             }
         }
+        if !attrs.is_empty() {
+            block.attributes = attrs;
+        }
 
-        self.consume(&TokenKind::BraceClose, "Blocks should end in a brace");
-
-        println!("{:#?}", attrs);
         block
     }
 
     pub fn parse_attr(&mut self) -> Option<(Spur, Value)> {
-        // For both inline and block-level attributes, we expect a leading dot
         let _dot = self.consume(&TokenKind::Dot, "Attributes are required to start with a dot")?;
         let identifier = self.consume_identifier("Expected attribute name")?;
         self.consume(&TokenKind::Equals, "attribute name must be separated by an equals sign")?;

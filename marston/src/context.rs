@@ -1,10 +1,11 @@
-use crate::ast::ident_table::IdentTable;
-use crate::ast::parser::Parser;
-use crate::config::Config;
-use crate::fs::read_string;
-use crate::lexer::{Token, TokenKind};
-use crate::reports::ReportsBag;
-use crate::{MPath, MResult};
+use crate::{
+    MPath, MResult,
+    ast::{ident_table::IdentTable, parser::Parser},
+    config::Config,
+    fs::read_string,
+    lexer::{Token, TokenKind},
+    reports::ReportsBag,
+};
 use logos::Logos;
 
 #[derive(Debug)]
@@ -16,11 +17,7 @@ pub struct Context {
 
 impl Context {
     pub fn new(cwd: &MPath) -> MResult<Self> {
-        Ok(Context {
-            config: Config::find_recursively(cwd)?,
-            cwd: cwd.clone(),
-            current_file: None,
-        })
+        Ok(Context { config: Config::find_recursively(cwd)?, cwd: cwd.clone(), current_file: None })
     }
 
     pub fn name(&self) -> String {

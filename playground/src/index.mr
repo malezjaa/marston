@@ -1,4 +1,4 @@
-.head(.test = "dwa")
+.head(.test = "dwa") {
     .title = "Test",
     .lang = "en",
     .description = "This is a sample Marston page with head and body blocks.",
@@ -8,7 +8,8 @@
 
 .body {
     .header(.class = "site-header") {
-        { "Welcome to Marston!" }
+        "Welcome to Marston!",
+        "Hello!"
     },
     .main(.class = "content") {
         .h1 { "Hello World" },
@@ -16,6 +17,6 @@
         .img(.src = "hero.jpg", .alt = "Hero Image")
     },
     .footer(.class = "site-footer") {
-        { "© 2025 Marston Project" }
+        "© 2025 Marston Project"
     }
 }
