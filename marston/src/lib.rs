@@ -10,6 +10,7 @@ pub mod fs;
 pub mod lexer;
 mod reports;
 mod span;
+mod validator;
 
 pub type MResult<T> = anyhow::Result<T>;
 

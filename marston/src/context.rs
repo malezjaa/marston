@@ -9,6 +9,7 @@ use crate::{
 };
 use log::error;
 use logos::Logos;
+use crate::validator::Validate;
 
 #[derive(Debug)]
 pub struct Context {
@@ -55,9 +56,12 @@ impl Context {
         bag.print();
 
         if bag.has_errors() {
-            error!("Returning errors because of errors in compilation.");
+            error!("Returning errors because of errors in parsing.");
             return Ok(());
         }
+        
+        
+        doc.validate();
 
         let codegen = &mut Codegen::new();
         doc.generate(codegen);
