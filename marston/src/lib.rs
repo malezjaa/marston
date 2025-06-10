@@ -8,6 +8,7 @@ pub mod context;
 pub mod fs;
 pub mod lexer;
 mod reports;
+mod span;
 
 pub type MResult<T> = anyhow::Result<T>;
 

@@ -4,6 +4,7 @@ use crate::{
     error_report,
     lexer::{Token, TokenKind},
     reports::TemporaryBag,
+    span::SpanUtils,
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
@@ -42,17 +43,26 @@ impl<'a> Parser<'a> {
         let mut attrs: FxHashMap<Spur, Value> = Default::default();
 
         let identifier = self.consume_identifier("Expected block name");
-        let block = Block::new(identifier);
+        let mut block = Block::new(identifier);
+
+        // Parse inline attributes in parentheses
         if self.check(&TokenKind::ParenOpen) {
             self.advance();
 
-            while !self.check(&TokenKind::ParenClose) {
+            while !self.check(&TokenKind::ParenClose) && !self.is_at_end() {
                 let attr = self.parse_attr();
 
                 if self.current().kind != TokenKind::ParenClose {
-                    self.consume_on_earlier_span(
+                    // Use the previous token's end as the error span for missing comma
+                    let error_span = self
+                        .previous()
+                        .map(|t| t.span.to_end())
+                        .unwrap_or_else(|| self.current().span.clone());
+
+                    self.consume_with_span(
                         &TokenKind::Comma,
                         "Attributes must be separated by commas",
+                        error_span,
                     );
                 }
 
@@ -64,13 +74,89 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            self.advance();
+            self.consume(
+                &TokenKind::ParenClose,
+                "Block's inner attribute list is missing a closing parenthesis",
+            );
         }
 
+        if !self
+            .consume_with_span(
+                &TokenKind::BraceOpen,
+                "Blocks should be followed by a brace",
+                self.previous().unwrap().span.to_start().move_by(1),
+            )
+            .is_some()
+        {
+            self.skip_until(&[TokenKind::BraceOpen, TokenKind::BraceClose]);
+            if self.check(&TokenKind::BraceOpen) {
+                self.advance();
+            } else {
+                return block;
+            }
+        }
+
+        let mut children = Vec::new();
+
+        while !self.check(&TokenKind::BraceClose) && !self.is_at_end() {
+            if self.current().kind == TokenKind::Dot {
+                if let Some(ahead) = self.peek_ahead(1) {
+                    match ahead.kind {
+                        TokenKind::Equals => {
+                            // This is a block-level attribute
+                            let attr = self.parse_attr();
+                            if let Some((attr_name, attr_value)) = attr {
+                                attrs.insert(attr_name, attr_value);
+                            }
+
+                            // Consume optional comma after attribute
+                            self.match_token(&TokenKind::Comma);
+                        }
+                        _ => {
+                            // This is a child block
+                            let child = self.parse_block();
+                            children.push(child);
+
+                            // Consume optional comma after child block
+                            self.match_token(&TokenKind::Comma);
+                        }
+                    }
+                } else {
+                    self.error_at_current("Unexpected end of input after '.'");
+                    break;
+                }
+            } else if self.check(&TokenKind::BraceOpen) {
+                // This might be a text content block { "some text" }
+                self.advance(); // consume opening brace
+
+                // For now, skip content until closing brace
+                // You'll want to implement proper text content parsing here
+                while !self.check(&TokenKind::BraceClose) && !self.is_at_end() {
+                    self.advance();
+                }
+
+                if self.check(&TokenKind::BraceClose) {
+                    self.advance(); // consume closing brace
+                }
+
+                // Consume optional comma after content block
+                self.match_token(&TokenKind::Comma);
+            } else {
+                self.error_at_current(
+                    "Invalid block children. Expected a block, an attribute, or content",
+                );
+                self.advance(); // try to recover by skipping the problematic token
+            }
+        }
+
+        self.consume(&TokenKind::BraceClose, "Blocks should end in a brace");
+
+        println!("{:#?}", attrs);
         block
     }
 
     pub fn parse_attr(&mut self) -> Option<(Spur, Value)> {
+        // For both inline and block-level attributes, we expect a leading dot
         let _dot = self.consume(&TokenKind::Dot, "Attributes are required to start with a dot")?;
         let identifier = self.consume_identifier("Expected attribute name")?;
         self.consume(&TokenKind::Equals, "attribute name must be separated by an equals sign")?;
@@ -190,20 +276,22 @@ impl<'a> Parser<'a> {
         if self.check(token_type) {
             self.advance()
         } else {
-            self.error_expected_token(token_type, message, false);
+            self.error_expected_token(token_type, message);
             None
         }
     }
 
-    pub fn consume_on_earlier_span(
+    /// Consume a token with a custom error span
+    pub fn consume_with_span(
         &mut self,
         token_type: &TokenKind,
         message: &str,
+        span: Range<usize>,
     ) -> Option<&Token> {
         if self.check(token_type) {
             self.advance()
         } else {
-            self.error_expected_token(token_type, message, true);
+            self.error_expected_token_at_span(token_type, message, span);
             None
         }
     }
@@ -218,6 +306,21 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Consume any of the expected token types with a custom error span
+    pub fn consume_any_with_span(
+        &mut self,
+        token_types: &[TokenKind],
+        message: &str,
+        span: Range<usize>,
+    ) -> Option<&Token> {
+        if self.check_any(token_types) {
+            self.advance()
+        } else {
+            self.error_expected_any_token_at_span(token_types, message, span);
+            None
+        }
+    }
+
     /// Consume an identifier token specifically
     pub fn consume_identifier(&mut self, message: &str) -> Option<Spur> {
         if let TokenKind::Identifier(name) = &self.current().kind {
@@ -227,6 +330,22 @@ impl<'a> Parser<'a> {
         }
 
         self.error_expected_identifier(message);
+        None
+    }
+
+    /// Consume an identifier with a custom error span
+    pub fn consume_identifier_with_span(
+        &mut self,
+        message: &str,
+        span: Range<usize>,
+    ) -> Option<Spur> {
+        if let TokenKind::Identifier(name) = &self.current().kind {
+            let interned = intern(name);
+            self.advance();
+            return Some(interned);
+        }
+
+        self.error_expected_identifier_at_span(message, span);
         None
     }
 
@@ -250,23 +369,45 @@ impl<'a> Parser<'a> {
         !self.is_at_end()
     }
 
-    fn error_expected_token(&mut self, expected: &TokenKind, message: &str, earlier_span: bool) {
+    // Error reporting methods
+    fn error_expected_token(&mut self, expected: &TokenKind, message: &str) {
         let error_msg = format!("Expected '{}', found '{}'", expected, self.current().kind);
-        let current = self.current().span.clone();
-        let span = if earlier_span { current.start - 1..current.start - 1 } else { current };
+        self.error_at_current(&format!("{}. {}", error_msg, message));
+    }
 
+    fn error_expected_token_at_span(
+        &mut self,
+        expected: &TokenKind,
+        message: &str,
+        span: Range<usize>,
+    ) {
+        let error_msg = format!("Expected '{}', found '{}'", expected, self.current().kind);
         self.error_at(&format!("{}. {}", error_msg, message), span);
     }
 
     fn error_expected_any_token(&mut self, expected: &[TokenKind], message: &str) {
         let expected_names: Vec<String> = expected.iter().map(|t| format!("'{}'", t)).collect();
-
         let error_msg = format!(
             "Expected one of [{}], found '{}'",
             expected_names.join(", "),
             self.current().kind
         );
         self.error_at_current(&format!("{}. {}", error_msg, message));
+    }
+
+    fn error_expected_any_token_at_span(
+        &mut self,
+        expected: &[TokenKind],
+        message: &str,
+        span: Range<usize>,
+    ) {
+        let expected_names: Vec<String> = expected.iter().map(|t| format!("'{}'", t)).collect();
+        let error_msg = format!(
+            "Expected one of [{}], found '{}'",
+            expected_names.join(", "),
+            self.current().kind
+        );
+        self.error_at(&format!("{}. {}", error_msg, message), span);
     }
 
     fn error_expected_identifier(&mut self, message: &str) {
@@ -277,6 +418,14 @@ impl<'a> Parser<'a> {
         ));
     }
 
+    fn error_expected_identifier_at_span(&mut self, message: &str, span: Range<usize>) {
+        self.error_at(
+            &format!("Expected identifier, found '{}'. {}", self.current(), message),
+            span,
+        );
+    }
+
+    // Core error reporting methods - these remain unchanged for at_current/at_previous usage
     pub fn error_at_current(&mut self, message: &str) {
         let token = self.current();
         self.bag.add(error_report!(
