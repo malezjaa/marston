@@ -1,7 +1,9 @@
 use logos::{Lexer, Logos, Span};
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::ops::Range;
+use std::{
+    fmt,
+    fmt::{Display, Formatter},
+    ops::Range,
+};
 
 #[derive(Debug, Logos, Clone, PartialEq)]
 #[logos(skip r"[ \t\r\n\f]+")]
@@ -42,7 +44,10 @@ pub enum TokenKind {
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap())]
     Number(f64),
 
-    #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex| lex.slice().to_owned())]
+    #[regex(r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#, |lex| {
+        let s = lex.slice();
+        s[1..s.len()-1].to_string()
+    })]
     String(String),
 
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_owned())]

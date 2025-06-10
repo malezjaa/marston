@@ -3,25 +3,22 @@ mod generator;
 use crate::{MPath, MResult, ast::MarstonDocument};
 use std::{
     fs::{self, File, create_dir_all},
-    io::Write,
+    io::{BufWriter, Write},
     path::Path,
 };
-use std::io::BufWriter;
 
 pub struct Codegen {
     content: BufWriter<Vec<u8>>,
     indent_level: usize,
     indent_size: usize,
+    pub top_level: bool,
 }
 
 impl Codegen {
     pub fn new() -> Self {
-        Self {
-            content: BufWriter::new(vec![]),
-            indent_level: 0,
-            indent_size: 4,
-        }
+        Self { content: BufWriter::new(vec![]), indent_level: 0, indent_size: 2, top_level: true }
     }
+
     pub fn write_to_file(&self, path: &MPath) -> MResult<()> {
         if let Some(parent) = path.parent() {
             create_dir_all(parent)?;
@@ -33,16 +30,15 @@ impl Codegen {
         Ok(())
     }
 
-    pub fn write(&mut self, text: &str) -> &mut Self {
+    pub fn write(&mut self, text: &str) {
         write!(self.content, "{}", text).unwrap();
-        self
     }
 
-    pub fn writeln(&mut self, text: &str) -> &mut Self {
+    pub fn writeln(&mut self, text: &str) {
         let indent = " ".repeat(self.indent_level * self.indent_size);
 
-        writeln!(self.content, "{}{}", indent, text).unwrap();
-        self
+        writeln!(self.content, "{}{}", if self.top_level { String::new() } else { indent }, text)
+            .unwrap();
     }
 
     pub fn newline(&mut self) -> &mut Self {
