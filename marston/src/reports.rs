@@ -61,8 +61,9 @@ pub static REPORTS_BAG: Lazy<Mutex<ReportsBag>> = Lazy::new(|| {
 });
 
 #[macro_export]
-macro_rules! error_report {
+macro_rules! report {
     (
+        kind: $kind:expr,
         span: $span:expr,
         message: $message:expr
         $(, labels: {
@@ -74,7 +75,7 @@ macro_rules! error_report {
         $(,)?
     ) => {{
         #[allow(unused_mut)]
-        let mut report = Report::build(ReportKind::Error, (ReportsBag::file(), $span))
+        let mut report = Report::build($kind, (ReportsBag::file(), $span))
             .with_message($message);
 
         $(

@@ -4,9 +4,9 @@ use crate::{
         Block, MarstonDocument,
         ident_table::{get_or_intern, resolve},
     },
-    error_report,
     html::tags::is_unique_tag,
     info::Info,
+    report,
     reports::ReportsBag,
     validator::{Validate, ValidationRule},
 };
@@ -44,7 +44,8 @@ pub fn validate_block_name_uniqueness(_: &MarstonDocument, info: &mut Info) {
     }
 
     for ((name, dup_span), orig_span) in duplicates {
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: dup_span.clone(),
             message: format!("Duplicate block name '{}' found", name),
             labels: {
@@ -71,7 +72,8 @@ pub fn ensure_required_tags(doc: &MarstonDocument, info: &mut Info) {
     }
 
     if !missing_tags.is_empty() {
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: Span::default(),
             message: format!("Missing required tags: {}", missing_tags.iter().join(", ")),
             labels: {
@@ -85,9 +87,10 @@ pub fn ensure_required_tags(doc: &MarstonDocument, info: &mut Info) {
 
     if !missing_tags.contains(&"head") {
         let head = doc.find_block_by_name(get_or_intern("head")).unwrap();
-        
+
         if head.get_attribute(get_or_intern("title")).is_none() {
-            ReportsBag::add(error_report!(
+            ReportsBag::add(report!(
+                kind: ReportKind::Error,
                 span: head.span.clone(),
                 message: "Missing 'title' attribute in 'head'".to_string(),
                 labels: {

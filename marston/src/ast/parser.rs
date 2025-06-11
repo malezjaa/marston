@@ -1,8 +1,8 @@
 use crate::{
     ast::{Block, MarstonDocument, Node, Value, ident_table::get_or_intern},
     context::Context,
-    error_report,
     lexer::{Token, TokenKind},
+    report,
     reports::ReportsBag,
     span::SpanUtils,
 };
@@ -408,7 +408,8 @@ impl<'a> Parser<'a> {
     // Core error reporting methods - these remain unchanged for at_current/at_previous usage
     pub fn error_at_current(&mut self, message: &str) {
         let token = self.current();
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: token.span.clone(),
             message: message,
             labels: {
@@ -420,7 +421,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn error_at(&mut self, message: &str, span: Range<usize>) {
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: span.clone(),
             message: message,
             labels: {
@@ -433,7 +435,8 @@ impl<'a> Parser<'a> {
 
     pub fn error_at_previous(&mut self, message: &str) {
         if let Some(token) = self.previous() {
-            ReportsBag::add(error_report!(
+            ReportsBag::add(report!(
+                kind: ReportKind::Error,
                 span: token.span.clone(),
                 message: message,
                 labels: {
@@ -451,7 +454,8 @@ impl<'a> Parser<'a> {
         let end_span =
             self.tokens.last().map(|token| token.span.end..token.span.end).unwrap_or(0..0);
 
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: end_span.clone(),
             message: format!("Unexpected end of input: {}", message),
             labels: {
@@ -468,7 +472,8 @@ impl<'a> Parser<'a> {
         label_span: Range<usize>,
         label_message: &str,
     ) {
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: label_span.clone(),
             message: message,
             labels: {
@@ -480,7 +485,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn error_with_note(&mut self, message: &str, span: Range<usize>, note: &str) {
-        ReportsBag::add(error_report!(
+        ReportsBag::add(report!(
+            kind: ReportKind::Error,
             span: span,
             message: message,
             notes: [note]
@@ -494,7 +500,8 @@ impl<'a> Parser<'a> {
     ) {
         let primary_span = labels.first().map(|(span, _, _)| span.clone()).unwrap_or(0..0);
 
-        let mut report = error_report!(
+        let mut report = report!(
+            kind: ReportKind::Error,
             span: primary_span,
             message: message,
             labels: {}
