@@ -1,5 +1,8 @@
 use crate::{
-    ast::{Attribute, Block, Interned, MarstonDocument, Node, Value, ident_table::get_or_intern},
+    ast::{
+        Attribute, Block, Interned, MarstonDocument, Node, Value, ValueKind,
+        ident_table::get_or_intern,
+    },
     context::Context,
     lexer::{Token, TokenKind},
     report,
@@ -146,10 +149,11 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_value(&mut self) -> Option<Value> {
-        let val = match &self.current().kind {
-            TokenKind::String(s) => Some(Value::String(s.clone())),
-            TokenKind::Number(num) => Some(Value::Number(*num)),
-            TokenKind::Bool(bool) => Some(Value::Boolean(*bool)),
+        let start = self.current().span.start;
+        let kind = match &self.current().kind {
+            TokenKind::String(s) => Some(ValueKind::String(s.clone())),
+            TokenKind::Number(num) => Some(ValueKind::Number(*num)),
+            TokenKind::Bool(bool) => Some(ValueKind::Boolean(*bool)),
 
             TokenKind::BracketOpen => {
                 self.advance();
@@ -178,7 +182,7 @@ impl<'a> Parser<'a> {
                     return None;
                 }
 
-                Some(Value::Array(values))
+                Some(ValueKind::Array(values))
             }
 
             _ => {
@@ -189,11 +193,18 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if !matches!(val, Some(Value::Array(_))) {
+        if !matches!(kind, Some(ValueKind::Array(_))) {
             self.advance();
         }
 
-        val
+        Some(Value {
+            kind: kind?,
+            span: if let Some(previous) = self.previous() {
+                start..previous.span.end
+            } else {
+                start..self.current().span.end
+            },
+        })
     }
 
     pub fn current(&self) -> &Token {
@@ -414,9 +425,7 @@ impl<'a> Parser<'a> {
             span: token.span.clone(),
             message: message,
             labels: {
-                token.span.clone() => {
-                    message: message => Color::BrightRed
-                }
+                token.span.clone() => message => Color::BrightRed
             }
         ));
     }
@@ -427,9 +436,7 @@ impl<'a> Parser<'a> {
             span: span.clone(),
             message: message,
             labels: {
-                span => {
-                    message: message => Color::BrightRed
-                }
+                span => message => Color::BrightRed
             }
         ));
     }
@@ -441,9 +448,7 @@ impl<'a> Parser<'a> {
                 span: token.span.clone(),
                 message: message,
                 labels: {
-                    token.span.clone() => {
-                        message: message => Color::BrightRed
-                    }
+                    token.span.clone() => message => Color::BrightRed
                 }
             ));
         } else {
@@ -460,9 +465,7 @@ impl<'a> Parser<'a> {
             span: end_span.clone(),
             message: format!("Unexpected end of input: {}", message),
             labels: {
-                end_span => {
-                    message: "unexpected end of input" => Color::BrightRed
-                }
+                end_span => "unexpected end of input" => Color::BrightRed
             }
         ));
     }
@@ -478,9 +481,7 @@ impl<'a> Parser<'a> {
             span: label_span.clone(),
             message: message,
             labels: {
-                label_span => {
-                    message: label_message => Color::BrightRed
-                }
+                label_span => label_message => Color::BrightRed
             }
         ));
     }

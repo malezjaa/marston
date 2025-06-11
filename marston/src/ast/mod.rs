@@ -49,7 +49,13 @@ impl Attribute {
 }
 
 #[derive(Debug, Clone)]
-pub enum Value {
+pub struct Value {
+    pub kind: ValueKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum ValueKind {
     String(String),
     Number(f64),
     Boolean(bool),
@@ -139,20 +145,20 @@ impl Block {
     }
 }
 
-impl Value {
+impl ValueKind {
     pub fn as_string(&self) -> Option<&String> {
-        if let Value::String(s) = self { Some(s) } else { None }
+        if let ValueKind::String(s) = self { Some(s) } else { None }
     }
 
     pub fn as_number(&self) -> Option<f64> {
-        if let Value::Number(n) = self { Some(*n) } else { None }
+        if let ValueKind::Number(n) = self { Some(*n) } else { None }
     }
 
     pub fn as_boolean(&self) -> Option<bool> {
-        if let Value::Boolean(b) = self { Some(*b) } else { None }
+        if let ValueKind::Boolean(b) = self { Some(*b) } else { None }
     }
 
     pub fn as_array(&self) -> Option<&Vec<Value>> {
-        if let Value::Array(arr) = self { Some(arr) } else { None }
+        if let ValueKind::Array(arr) = self { Some(arr) } else { None }
     }
 }

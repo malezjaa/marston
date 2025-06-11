@@ -67,9 +67,7 @@ macro_rules! report {
         span: $span:expr,
         message: $message:expr
         $(, labels: {
-            $($label_span:expr => {
-                message: $label_msg:expr => $label_color:expr
-            }),* $(,)?
+            $($label_span:expr => $label_msg:expr => $label_color:expr ),* $(,)?
         })?
         $(, notes: [$($note:expr),* $(,)?])?
         $(,)?
