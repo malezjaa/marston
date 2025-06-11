@@ -16,12 +16,36 @@ pub enum Node {
     Text(String),
 }
 
+#[derive(Clone, Debug)]
+pub struct Interned {
+    pub span: Span,
+    pub key: Spur,
+}
+
+impl Interned {
+    pub fn new(name: Spur, span: Span) -> Self {
+        Self { key: name, span }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Block {
-    pub name: Option<Spur>,
-    pub attributes: FxHashMap<Spur, Value>,
+    pub name: Option<Interned>,
+    pub attributes: Vec<Attribute>,
     pub children: Vec<Node>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Attribute {
+    pub key: Interned,
+    pub value: Value,
+}
+
+impl Attribute {
+    pub fn new(key: Interned, value: Value) -> Self {
+        Self { key, value }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -42,34 +66,33 @@ impl MarstonDocument {
     }
 
     pub fn find_block_by_name(&self, name: Spur) -> Option<&Block> {
-        self.blocks.iter().find(|e| e.name == Some(name))
+        self.blocks.iter().find(|e| e.name.as_ref().map(|n| n.key) == Some(name))
     }
 
     pub fn find_blocks_by_name(&self, name: Spur) -> Vec<&Block> {
-        self.blocks.iter().filter(|e| e.name == Some(name)).collect()
+        self.blocks.iter().filter(|e| e.name.as_ref().map(|n| n.key) == Some(name)).collect()
     }
 }
 
 impl Block {
-    pub fn new(name: Option<Spur>) -> Self {
-        Self {
-            name,
-            attributes: FxHashMap::default(),
-            children: Vec::new(),
-            span: Default::default(),
-        }
+    pub fn new(name: Option<Interned>) -> Self {
+        Self { name, attributes: Vec::new(), children: Vec::new(), span: Default::default() }
     }
 
-    pub fn with_attributes(name: Option<Spur>, attributes: FxHashMap<Spur, Value>) -> Self {
+    pub fn with_attributes(name: Option<Interned>, attributes: Vec<Attribute>) -> Self {
         Self { name, attributes, children: Vec::new(), span: Default::default() }
     }
 
-    pub fn add_attribute(&mut self, key: Spur, value: Value) {
-        self.attributes.insert(key, value);
+    pub fn add_attribute(&mut self, key: Interned, value: Value) {
+        self.attributes.push(Attribute { key, value });
     }
 
     pub fn get_attribute(&self, key: Spur) -> Option<&Value> {
-        self.attributes.get(&key)
+        self.attributes.iter().find(|attr| attr.key.key == key).map(|attr| &attr.value)
+    }
+
+    pub fn has_attribute(&self, key: Spur) -> bool {
+        self.attributes.iter().any(|attr| attr.key.key == key)
     }
 
     pub fn add_child(&mut self, child: Node) {
@@ -87,7 +110,7 @@ impl Block {
     pub fn find_child_block(&self, name: Spur) -> Option<&Block> {
         self.children.iter().find_map(|child| {
             if let Node::Block(block) = child {
-                if block.name == Some(name) { Some(block) } else { None }
+                if block.name.as_ref().map(|n| n.key) == Some(name) { Some(block) } else { None }
             } else {
                 None
             }
@@ -99,16 +122,16 @@ impl Block {
             .iter()
             .filter_map(|child| {
                 if let Node::Block(block) = child {
-                    if block.name == Some(name) { Some(block) } else { None }
+                    if block.name.as_ref().map(|n| n.key) == Some(name) {
+                        Some(block)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             })
             .collect()
-    }
-
-    pub fn has_attribute(&self, key: Spur) -> bool {
-        self.attributes.contains_key(&key)
     }
 
     pub fn has_name(&self) -> bool {

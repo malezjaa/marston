@@ -1,8 +1,8 @@
-use v_htmlescape::escape;
 use crate::{
     ast::{Block, MarstonDocument, Node, ident_table::resolve},
     codegen::{Codegen, Gen},
 };
+use v_htmlescape::escape;
 
 impl Gen for MarstonDocument {
     fn generate(&self, p: &mut Codegen) {
@@ -25,7 +25,7 @@ impl Gen for MarstonDocument {
 impl Gen for Block {
     fn generate(&self, p: &mut Codegen) {
         if let Some(ref name) = self.name {
-            let tag = resolve(*name);
+            let tag = resolve(name.key);
 
             p.writeln(&format!("<{}>", tag));
             p.indent();

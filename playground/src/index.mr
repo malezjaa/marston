@@ -3,7 +3,10 @@
     .lang = "en",
     .description = "This is a sample Marston page with head and body blocks.",
     .stylesheets = ["styles.css"],
-    .scripts = ["script.js"]
+    .scripts = ["script.js"],
+    .title {
+        "dawd"
+    }
 }
 
 .body {

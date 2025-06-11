@@ -1,14 +1,14 @@
 use crate::{
     MPath, Span,
-    ast::{Block, MarstonDocument, Node, ident_table::resolve},
+    ast::{Block, Interned, MarstonDocument, Node, ident_table::resolve},
 };
 use lasso::Spur;
 
 #[derive(Debug)]
 pub struct BlockInfo {
     depth: usize,
-    pub(crate) span: Span,
-    pub(crate) name: Spur,
+    pub span: Span,
+    pub name: Interned,
 }
 
 #[derive(Debug)]
@@ -37,7 +37,7 @@ impl Info {
     }
 
     pub fn has_block(&self, name: Spur) -> bool {
-        self.blocks.iter().any(|b| b.name == name)
+        self.blocks.iter().any(|b| b.name.key == name)
     }
 }
 

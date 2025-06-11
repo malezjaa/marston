@@ -30,7 +30,7 @@ impl Validate for MarstonDocument {
 
 pub fn validate_block_name_uniqueness(_: &MarstonDocument, info: &mut Info) {
     let all_names: Vec<(String, Span)> =
-        info.blocks.iter().map(|block| (resolve(block.name.clone()), block.span.clone())).collect();
+        info.blocks.iter().map(|block| (resolve(block.name.key), block.span.clone())).collect();
 
     let mut seen: HashMap<String, Span> = HashMap::new();
     let mut duplicates = vec![];
@@ -100,6 +100,21 @@ pub fn ensure_required_tags(doc: &MarstonDocument, info: &mut Info) {
                 },
                 notes: ["Title attribute has to be direct child of 'head' block"]
             ));
+        }
+
+        if let Some(title) = head.find_child_block(get_or_intern("title")) {
+            let interned = title.name.clone().unwrap();
+            ReportsBag::add(report!(
+                kind: ReportKind::Error,
+                span: Default::default(),
+                message: "Title should be specified as an attribute, not a block".to_string(),
+                labels: {
+                    interned.span => {
+                        message: "Title block found, but it should be an attribute" => Color::BrightRed
+                    }
+                },
+                notes: ["Example: .title = 'My Document Title'"]
+            ))
         }
     }
 }

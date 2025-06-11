@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Block, MarstonDocument, Node, Value, ident_table::get_or_intern},
+    ast::{Attribute, Block, Interned, MarstonDocument, Node, Value, ident_table::get_or_intern},
     context::Context,
     lexer::{Token, TokenKind},
     report,
@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
     pub fn parse_block(&mut self) -> Block {
         let dot = self.consume(&TokenKind::Dot, "Blocks are required to start with a dot").cloned();
 
-        let mut attrs: FxHashMap<Spur, Value> = Default::default();
+        let mut attrs: Vec<Attribute> = Default::default();
 
         let identifier = self.consume_identifier("Expected block name");
         let mut block = Block::new(identifier);
@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
                 }
 
                 if let Some((attr_name, attr_value)) = attr {
-                    attrs.insert(attr_name, attr_value);
+                    attrs.push(Attribute::new(attr_name, attr_value));
                 } else {
                     debug!("found invalid attribute list");
                     break;
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
                             TokenKind::Equals => {
                                 let attr = self.parse_attr();
                                 if let Some((attr_name, attr_value)) = attr {
-                                    attrs.insert(attr_name, attr_value);
+                                    attrs.push(Attribute::new(attr_name, attr_value));
                                 }
                             }
                             _ => {
@@ -136,7 +136,7 @@ impl<'a> Parser<'a> {
         block
     }
 
-    pub fn parse_attr(&mut self) -> Option<(Spur, Value)> {
+    pub fn parse_attr(&mut self) -> Option<(Interned, Value)> {
         let _dot = self.consume(&TokenKind::Dot, "Attributes are required to start with a dot")?;
         let identifier = self.consume_identifier("Expected attribute name")?;
         self.consume(&TokenKind::Equals, "attribute name must be separated by an equals sign")?;
@@ -302,11 +302,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume an identifier token specifically
-    pub fn consume_identifier(&mut self, message: &str) -> Option<Spur> {
+    pub fn consume_identifier(&mut self, message: &str) -> Option<Interned> {
         if let TokenKind::Identifier(name) = &self.current().kind {
             let interned = get_or_intern(name);
+            let span = self.current().span.clone();
             self.advance();
-            return Some(interned);
+            return Some(Interned::new(interned, span));
         }
 
         self.error_expected_identifier(message);
