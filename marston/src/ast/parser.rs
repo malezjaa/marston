@@ -3,7 +3,7 @@ use crate::{
     context::Context,
     error_report,
     lexer::{Token, TokenKind},
-    reports::TemporaryBag,
+    reports::ReportsBag,
     span::SpanUtils,
 };
 use ariadne::{Color, Label, Report, ReportKind};
@@ -17,13 +17,12 @@ pub struct Parser<'a> {
     pub ctx: &'a Context,
     pub tokens: Vec<Token>,
     pub current: usize,
-    pub bag: TemporaryBag<'a>,
     pub doc: MarstonDocument,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(ctx: &'a Context, tokens: Vec<Token>) -> Self {
-        Self { ctx, tokens, current: 0, bag: TemporaryBag::new(), doc: MarstonDocument::new() }
+        Self { ctx, tokens, current: 0, doc: MarstonDocument::new() }
     }
 
     pub fn parse(&mut self) {
@@ -31,14 +30,14 @@ impl<'a> Parser<'a> {
             let block = self.parse_block();
             self.doc.add_block(block);
 
-            if self.bag.has_errors() {
+            if ReportsBag::has_errors() {
                 break;
             }
         }
     }
 
     pub fn parse_block(&mut self) -> Block {
-        self.consume(&TokenKind::Dot, "Blocks are required to start with a dot");
+        let dot = self.consume(&TokenKind::Dot, "Blocks are required to start with a dot").cloned();
 
         let mut attrs: FxHashMap<Spur, Value> = Default::default();
 
@@ -126,6 +125,12 @@ impl<'a> Parser<'a> {
         }
         if !attrs.is_empty() {
             block.attributes = attrs;
+        }
+
+        if let Some(dot) = dot
+            && let Some(previous) = self.previous()
+        {
+            block.span = dot.span.to(previous.span.clone());
         }
 
         block
@@ -403,8 +408,7 @@ impl<'a> Parser<'a> {
     // Core error reporting methods - these remain unchanged for at_current/at_previous usage
     pub fn error_at_current(&mut self, message: &str) {
         let token = self.current();
-        self.bag.add(error_report!(
-            file: self.ctx.file(),
+        ReportsBag::add(error_report!(
             span: token.span.clone(),
             message: message,
             labels: {
@@ -416,8 +420,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn error_at(&mut self, message: &str, span: Range<usize>) {
-        self.bag.add(error_report!(
-            file: self.ctx.file(),
+        ReportsBag::add(error_report!(
             span: span.clone(),
             message: message,
             labels: {
@@ -430,8 +433,7 @@ impl<'a> Parser<'a> {
 
     pub fn error_at_previous(&mut self, message: &str) {
         if let Some(token) = self.previous() {
-            self.bag.add(error_report!(
-                file: self.ctx.file(),
+            ReportsBag::add(error_report!(
                 span: token.span.clone(),
                 message: message,
                 labels: {
@@ -449,8 +451,7 @@ impl<'a> Parser<'a> {
         let end_span =
             self.tokens.last().map(|token| token.span.end..token.span.end).unwrap_or(0..0);
 
-        self.bag.add(error_report!(
-            file: self.ctx.file(),
+        ReportsBag::add(error_report!(
             span: end_span.clone(),
             message: format!("Unexpected end of input: {}", message),
             labels: {
@@ -464,11 +465,10 @@ impl<'a> Parser<'a> {
     pub fn error_with_label(
         &mut self,
         message: &str,
-        label_span: std::ops::Range<usize>,
+        label_span: Range<usize>,
         label_message: &str,
     ) {
-        self.bag.add(error_report!(
-            file: self.ctx.file(),
+        ReportsBag::add(error_report!(
             span: label_span.clone(),
             message: message,
             labels: {
@@ -480,8 +480,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn error_with_note(&mut self, message: &str, span: Range<usize>, note: &str) {
-        self.bag.add(error_report!(
-            file: self.ctx.file(),
+        ReportsBag::add(error_report!(
             span: span,
             message: message,
             notes: [note]
@@ -496,13 +495,12 @@ impl<'a> Parser<'a> {
         let primary_span = labels.first().map(|(span, _, _)| span.clone()).unwrap_or(0..0);
 
         let mut report = error_report!(
-            file: self.ctx.file(),
             span: primary_span,
             message: message,
             labels: {}
         );
 
-        self.bag.add(report);
+        ReportsBag::add(report);
     }
 
     /// Check if the current position matches a sequence of tokens
@@ -510,21 +508,5 @@ impl<'a> Parser<'a> {
         sequence.iter().enumerate().all(|(i, expected)| {
             self.peek_ahead(i).map(|token| token.kind == *expected).unwrap_or(false)
         })
-    }
-
-    /// Get the span from start token to current position
-    pub fn span_from(&self, start_token: &Token) -> Range<usize> {
-        let end = self
-            .previous()
-            .map(|t| t.span.end)
-            .or_else(|| Some(self.current().span.start))
-            .unwrap_or(start_token.span.end);
-
-        start_token.span.start..end
-    }
-
-    /// Create a span covering multiple tokens
-    pub fn span_between(&self, start: &Token, end: &Token) -> Range<usize> {
-        start.span.start..end.span.end
     }
 }

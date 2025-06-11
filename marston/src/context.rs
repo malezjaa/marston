@@ -4,18 +4,20 @@ use crate::{
     codegen::{Codegen, Gen},
     config::Config,
     fs::read_string,
+    info::{Info, InfoWalker},
     lexer::{Token, TokenKind},
     reports::ReportsBag,
+    validator::Validate,
 };
 use log::error;
 use logos::Logos;
-use crate::validator::Validate;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Context {
     config: Config,
     cwd: MPath,
-    current_file: Option<MPath>,
+    current_file: Option<Arc<MPath>>,
 }
 
 impl Context {
@@ -35,43 +37,42 @@ impl Context {
         &self.config.build.main_dir
     }
 
-    pub fn file(&self) -> &MPath {
-        self.current_file.as_ref().expect("current file is not set")
+    pub fn file(&self) -> Arc<MPath> {
+        self.current_file.clone().unwrap()
     }
 
     pub fn process_file(&mut self, file: &MPath) -> MResult<()> {
-        self.current_file = Some(file.clone());
+        self.current_file = Some(Arc::new(file.clone()));
         let content = read_string(file)?;
 
-        let mut bag = ReportsBag::new(file, content.as_str());
+        ReportsBag::init(self.current_file.clone().unwrap(), Arc::new(content.clone()));
         let tokens = TokenKind::get_tokens(&content);
 
         let mut parser = Parser::new(self, tokens);
         parser.parse();
-        bag.extend(parser.bag);
-        let doc = parser.doc.clone();
+        let mut doc = parser.doc.clone();
 
         let file_name = file.strip_prefix(self.main_dir())?;
         let file = self.build_dir().join(file_name).with_extension("html");
-        bag.print();
+        ReportsBag::print();
 
-        if bag.has_errors() {
+        if ReportsBag::has_errors() {
             error!("Returning errors because of errors in parsing.");
             return Ok(());
         }
-        
-        
-        doc.validate();
+        ReportsBag::clear_errors();
+
+        let info = &mut Info::new();
+        doc.collect_info(info);
+
+        doc.validate(info);
+
+        ReportsBag::print();
 
         let codegen = &mut Codegen::new();
         doc.generate(codegen);
-
         codegen.write_to_file(&file)?;
 
-        Ok(())
-    }
-
-    pub fn codegen(&self, file: MPath, doc: MarstonDocument) -> MResult<()> {
         Ok(())
     }
 }

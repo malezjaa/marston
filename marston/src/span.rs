@@ -7,6 +7,7 @@ pub trait SpanUtils {
     /// moves both points by the given amount
     fn move_by(&self, offset: usize) -> Range<usize>;
     fn move_back_by(&self, offset: usize) -> Range<usize>;
+    fn to(&self, other: Self) -> Range<usize>;
 }
 
 impl SpanUtils for Range<usize> {
@@ -24,5 +25,9 @@ impl SpanUtils for Range<usize> {
 
     fn move_back_by(&self, offset: usize) -> Range<usize> {
         self.start - offset..self.end - offset
+    }
+    
+    fn to(&self, other: Self) -> Range<usize> {
+        self.start..other.end
     }
 }

@@ -7,6 +7,8 @@ mod codegen;
 pub mod config;
 pub mod context;
 pub mod fs;
+pub mod html;
+mod info;
 pub mod lexer;
 mod reports;
 mod span;

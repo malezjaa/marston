@@ -21,7 +21,7 @@ pub struct Block {
     pub name: Option<Spur>,
     pub attributes: FxHashMap<Spur, Value>,
     pub children: Vec<Node>,
-    pub span: Option<Span>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -52,11 +52,16 @@ impl MarstonDocument {
 
 impl Block {
     pub fn new(name: Option<Spur>) -> Self {
-        Self { name, attributes: FxHashMap::default(), children: Vec::new(), span: None }
+        Self {
+            name,
+            attributes: FxHashMap::default(),
+            children: Vec::new(),
+            span: Default::default(),
+        }
     }
 
     pub fn with_attributes(name: Option<Spur>, attributes: FxHashMap<Spur, Value>) -> Self {
-        Self { name, attributes, children: Vec::new(), span: None }
+        Self { name, attributes, children: Vec::new(), span: Default::default() }
     }
 
     pub fn add_attribute(&mut self, key: Spur, value: Value) {
