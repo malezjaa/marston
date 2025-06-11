@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Block, MarstonDocument, Node, Value, ident_table::intern},
+    ast::{Block, MarstonDocument, Node, Value, ident_table::get_or_intern},
     context::Context,
     error_report,
     lexer::{Token, TokenKind},
@@ -304,7 +304,7 @@ impl<'a> Parser<'a> {
     /// Consume an identifier token specifically
     pub fn consume_identifier(&mut self, message: &str) -> Option<Spur> {
         if let TokenKind::Identifier(name) = &self.current().kind {
-            let interned = intern(name);
+            let interned = get_or_intern(name);
             self.advance();
             return Some(interned);
         }
@@ -320,7 +320,7 @@ impl<'a> Parser<'a> {
         span: Range<usize>,
     ) -> Option<Spur> {
         if let TokenKind::Identifier(name) = &self.current().kind {
-            let interned = intern(name);
+            let interned = get_or_intern(name);
             self.advance();
             return Some(interned);
         }

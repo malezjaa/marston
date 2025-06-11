@@ -1,6 +1,9 @@
 use crate::{
     Span,
-    ast::{Block, MarstonDocument, ident_table::resolve},
+    ast::{
+        Block, MarstonDocument,
+        ident_table::{get_or_intern, resolve},
+    },
     error_report,
     html::tags::is_unique_tag,
     info::Info,
@@ -13,7 +16,7 @@ use std::{collections::HashMap, sync::Arc};
 
 impl Validate for MarstonDocument {
     fn rules() -> Vec<ValidationRule<Self>> {
-        vec![validate_block_name_uniqueness]
+        vec![ensure_required_tags, validate_block_name_uniqueness]
     }
 
     fn validate(&self, info: &mut Info) {
@@ -54,5 +57,46 @@ pub fn validate_block_name_uniqueness(_: &MarstonDocument, info: &mut Info) {
             },
             notes: [format!("'{name}' is a block that should occur only once per document")]
         ));
+    }
+}
+
+pub fn ensure_required_tags(doc: &MarstonDocument, info: &mut Info) {
+    let required_tags = ["head", "body"];
+    let mut missing_tags = vec![];
+
+    for tag in required_tags {
+        if !info.has_block(get_or_intern(tag)) {
+            missing_tags.push(tag);
+        }
+    }
+
+    if !missing_tags.is_empty() {
+        ReportsBag::add(error_report!(
+            span: Span::default(),
+            message: format!("Missing required tags: {}", missing_tags.iter().join(", ")),
+            labels: {
+                Span::default() => {
+                    message: "These tags are required for a valid Marston document" => Color::BrightRed
+                }
+            },
+            notes: ["Ensure that your document includes all required tags in its root"]
+        ));
+    }
+
+    if !missing_tags.contains(&"head") {
+        let head = doc.find_block_by_name(get_or_intern("head")).unwrap();
+        
+        if head.get_attribute(get_or_intern("title")).is_none() {
+            ReportsBag::add(error_report!(
+                span: head.span.clone(),
+                message: "Missing 'title' attribute in 'head'".to_string(),
+                labels: {
+                    head.span.clone() => {
+                        message: "The 'title' block is required within the 'head' tag" => Color::BrightRed
+                    }
+                },
+                notes: ["Title attribute has to be direct child of 'head' block"]
+            ));
+        }
     }
 }

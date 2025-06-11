@@ -23,7 +23,7 @@ impl IdentTable {
 pub static GLOBAL_TABLE: Lazy<Mutex<IdentTable>> = Lazy::new(|| Mutex::new(IdentTable::new()));
 
 #[inline]
-pub fn intern(name: &str) -> Spur {
+pub fn get_or_intern(name: &str) -> Spur {
     GLOBAL_TABLE.lock().unwrap().intern(name)
 }
 

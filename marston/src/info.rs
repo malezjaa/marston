@@ -35,6 +35,10 @@ impl Info {
     fn exit_block(&mut self) {
         self.current_depth -= 1;
     }
+
+    pub fn has_block(&self, name: Spur) -> bool {
+        self.blocks.iter().any(|b| b.name == name)
+    }
 }
 
 pub trait InfoWalker {
