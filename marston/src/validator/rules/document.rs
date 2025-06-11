@@ -29,7 +29,6 @@ pub fn validate_block_name_uniqueness(_: &MarstonDocument, info: &mut Info) {
     let all_names: Vec<(String, Span)> =
         info.blocks.iter().map(|block| (resolve(block.name.clone()), block.span.clone())).collect();
 
-    println!("{:#?}", all_names);
     let mut seen: HashMap<String, Span> = HashMap::new();
     let mut duplicates = vec![];
 

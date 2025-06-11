@@ -1,3 +1,4 @@
+use v_htmlescape::escape;
 use crate::{
     ast::{Block, MarstonDocument, Node, ident_table::resolve},
     codegen::{Codegen, Gen},
@@ -46,7 +47,7 @@ impl Gen for Node {
 
         match self {
             Node::Block(block) => block.generate(p),
-            Node::Text(text) => p.writeln(text),
+            Node::Text(text) => p.writeln(&escape(text).to_string()),
         }
     }
 }
