@@ -1,28 +1,26 @@
 [workspace]
-resolver = "3"
+resolver = "2"
 members = ["cli", "marston"]
 
 [workspace.dependencies]
+anstyle = "1.0.11"
 anyhow = "1.0.98"
-clap = "4.5.39"
-fern = { version = "0.7.1", features = ["colored"] }
-log = "0.4.27"
-thiserror = "2.0.12"
+ariadne = "0.5.1"
 backtrace = "0.3.75"
+camino = "1.1.10"
+clap = "4.5.39"
 colored = "3.0.0"
+fern = { version = "0.7.1", features = ["colored"] }
+fs-err = "3.1.0"
+lasso = "0.7.3"
+log = "0.4.27"
+marston-core = { path = "marston" }
+rayon = "1.10.0"
+rustc-hash = "2.1.1"
+serde = "1.0.219"
 sysinfo = "0.35.2"
 terminal_size = "0.4.2"
-anstyle = "1.0.11"
-marston-core = { path = "marston" }
-serde = "1.0.219"
 toml = "0.8.23"
-fs-err = "3.1.0"
-camino = "1.1.10"
-rayon = "1.10.0"
-ariadne = "0.5.1"
-lasso = "0.7.3"
-rustc-hash = "2.1.1"
-bumpalo = "3.18.1"
 
 [workspace.lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

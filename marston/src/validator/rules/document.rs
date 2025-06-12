@@ -8,13 +8,12 @@ use crate::{
     info::{BlockInfo, Info},
     report,
     reports::ReportsBag,
-    validator::{Validate, ValidationRule},
+    validator::{GenericValidator, Validate, ValidationRule},
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use itertools::Itertools;
 use lasso::Spur;
 use std::{collections::HashMap, sync::Arc};
-use crate::validator::GenericValidator;
 
 impl Validate for MarstonDocument {
     fn rules() -> Vec<ValidationRule<Self>> {

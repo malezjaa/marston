@@ -1,8 +1,8 @@
 use crate::{
     ast::Block,
+    info::Info,
     validator::{Validate, ValidationRule},
 };
-use crate::info::Info;
 
 impl Validate for Block {
     fn rules() -> Vec<ValidationRule<Self>> {

@@ -1,15 +1,10 @@
-use crate::clap::cli;
-use crate::commands::build::build_command;
-use crate::logger::init_logger;
-use crate::panic::setup_panic_handler;
+use crate::{
+    clap::cli, commands::build::build_command, logger::init_logger, panic::setup_panic_handler,
+};
 use anyhow::bail;
 use log::{error, info};
-use marston_core::context::Context;
-use marston_core::{MPath, MResult};
-use std::env;
-use std::path::Path;
-use std::process::exit;
-use marston_core::fs::to_mpath;
+use marston_core::{MPath, MResult, context::Context, fs::to_mpath};
+use std::{env, path::Path, process::exit};
 
 mod clap;
 mod commands;

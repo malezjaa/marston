@@ -4,17 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = { workspace = true }
-clap = { workspace = true }
-fern = { workspace = true }
-log = { workspace = true }
-terminal_size = { workspace = true }
-thiserror = { workspace = true }
-backtrace = { workspace = true }
-colored = { workspace = true }
-sysinfo = { workspace = true }
 anstyle = { workspace = true }
-marston-core = { workspace = true }
-camino = { workspace = true }
+anyhow = { workspace = true }
+backtrace = { workspace = true }
+clap = { workspace = true }
+colored = { workspace = true }
+fern = { workspace = true }
 glob = "0.3.2"
+log = { workspace = true }
+marston-core = { workspace = true }
 rayon = { workspace = true }
+sysinfo = { workspace = true }
+terminal_size = { workspace = true }

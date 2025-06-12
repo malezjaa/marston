@@ -26,7 +26,7 @@ impl SpanUtils for Range<usize> {
     fn move_back_by(&self, offset: usize) -> Range<usize> {
         self.start - offset..self.end - offset
     }
-    
+
     fn to(&self, other: Self) -> Range<usize> {
         self.start..other.end
     }

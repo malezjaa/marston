@@ -1,5 +1,4 @@
-use crate::fs::walk_for_file;
-use crate::{MPath, MResult};
+use crate::{MPath, MResult, fs::walk_for_file};
 use anyhow::anyhow;
 use fs_err::read_to_string;
 use serde::{Deserialize, Serialize};

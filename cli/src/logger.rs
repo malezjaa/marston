@@ -1,5 +1,7 @@
-use fern::Dispatch;
-use fern::colors::{Color, ColoredLevelConfig};
+use fern::{
+    Dispatch,
+    colors::{Color, ColoredLevelConfig},
+};
 use log::LevelFilter;
 use marston_core::MResult;
 
