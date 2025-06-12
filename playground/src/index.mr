@@ -1,12 +1,11 @@
-.head(.test = "dwa") {
-    //.title = "Home Page for Marston Foundation",
+.head {
+    .title = "Home Page for Marston Foundation",
     .lang = "en",
     .description = "This is a sample Marston page with head and body blocks.",
     .stylesheets = ["styles.css"],
     .scripts = ["script.js"],
-    .title {
-        "Home Page for Marston Foundation"
-    }
+    .charset = "UTF-8",
+    .viewport = "width=device-width, initial-scale=1.0",
 }
 
 .body {
