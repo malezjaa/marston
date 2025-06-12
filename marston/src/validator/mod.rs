@@ -11,6 +11,7 @@ use crate::{
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
+use unic_langid::LanguageIdentifier;
 
 pub mod rules;
 
@@ -252,13 +253,8 @@ impl GenericValidator {
         self.check_value(|value, span| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim().to_lowercase();
-                let valid_codes = [
-                    "en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh", "ar", "hi",
-                    "en-us", "en-gb", "es-es", "es-mx", "fr-fr", "fr-ca", "de-de", "it-it",
-                    "pt-br", "pt-pt", "zh-cn", "zh-tw", "ja-jp", "ko-kr"
-                ];
 
-                if !valid_codes.contains(&trimmed.as_str()) && !is_valid_language_pattern(&trimmed) {
+                if let Err(_) = trimmed.parse::<LanguageIdentifier>() && !is_valid_language_pattern(&trimmed) {
                     ReportsBag::add(report!(
                         kind: ReportKind::Warning,
                         message: "Potentially invalid language code".to_string(),

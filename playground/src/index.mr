@@ -1,6 +1,6 @@
 .head {
     .title = "Home Page for Marston Foundation",
-    .lang = "en",
+    .lang = "en-US",
     .description = "This is a sample Marston page with head and body blocks.",
     .stylesheets = ["styles.css"],
     .scripts = ["script.js"],

@@ -19,6 +19,7 @@ log = "0.4.27"
 itertools = "0.14.0"
 v_htmlescape = "0.15.8"
 regex = "1.11.1"
+unic-langid = "0.9.6"
 
 [lints]
 workspace = true
