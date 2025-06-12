@@ -54,8 +54,7 @@ pub fn setup_panic_handler(no_backtrace: bool) {
         let divider = "━".repeat(terminal_width).bright_red();
 
         let title = " 💥 Oh no! Something went wrong! 💥 ";
-        let centered_title =
-            format!("{:^width$}", title, width = terminal_width).bright_red().bold();
+        let centered_title = format!("{title:^terminal_width$}").bright_red().bold();
 
         let report_info = format!(
             "{} {}",
@@ -85,7 +84,7 @@ pub fn setup_panic_handler(no_backtrace: bool) {
         );
 
         if no_backtrace {
-            eprintln!("{}", text);
+            eprintln!("{text}");
             return;
         }
 
@@ -157,11 +156,10 @@ pub fn setup_panic_handler(no_backtrace: bool) {
                 } else {
                     if consecutive_system_lines > 0 {
                         if consecutive_system_lines == 1 {
-                            backtrace = format!("{}  {}\n", backtrace, last_shown_line);
+                            backtrace = format!("{backtrace}  {last_shown_line}\n");
                         } else {
                             let collapse_message = format!(
-                                "... collapsed {} lines from system code ...",
-                                consecutive_system_lines
+                                "... collapsed {consecutive_system_lines} lines from system code ..."
                             );
                             backtrace = format!(
                                 "{}  {}\n",
@@ -179,14 +177,14 @@ pub fn setup_panic_handler(no_backtrace: bool) {
 
         if consecutive_system_lines > 0 {
             let collapse_message =
-                format!("... collapsed {} lines from system code ...", consecutive_system_lines);
+                format!("... collapsed {consecutive_system_lines} lines from system code ...");
             backtrace = format!("{}  {}\n", backtrace, collapse_message.bright_magenta().italic());
         }
 
         let footer = "━".repeat(terminal_width).bright_red();
-        backtrace = format!("{}{}\n", backtrace, footer);
+        backtrace = format!("{backtrace}{footer}\n");
 
-        eprintln!("{}{}", text, backtrace);
+        eprintln!("{text}{backtrace}");
     }))
 }
 
@@ -194,7 +192,7 @@ fn format_system_info(location: String, sys: System) -> String {
     let mut info = Vec::new();
 
     let mut add_info = |key: &str, value: String| {
-        info.push(format!("{}: {}", key, value).dimmed().to_string());
+        info.push(format!("{key}: {value}").dimmed().to_string());
     };
 
     add_info("VERSION", env!("CARGO_PKG_VERSION").to_string());

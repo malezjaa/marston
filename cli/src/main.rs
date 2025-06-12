@@ -3,8 +3,8 @@ use crate::{
 };
 use anyhow::bail;
 use log::{error, info};
-use marston_core::{MPath, MResult, context::Context, fs::to_mpath};
-use std::{env, path::Path, process::exit};
+use marston_core::{MResult, context::Context, fs::to_mpath};
+use std::{env, process::exit};
 
 mod clap;
 mod commands;
@@ -19,7 +19,7 @@ fn main() -> MResult<()> {
     init_logger()?;
     setup_panic_handler(args.get_flag("no-backtrace"));
 
-    let (cmd, matches) = match args.subcommand() {
+    let (cmd, _) = match args.subcommand() {
         Some((cmd, args)) => (cmd, args),
         None => {
             cli().print_help()?;

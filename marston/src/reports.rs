@@ -13,11 +13,11 @@ pub type MReport = Report<'static, (Arc<MPath>, Range<usize>)>;
 pub struct ReportsBag {
     reports: Vec<MReport>,
     file: Arc<MPath>,
-    source_content: Arc<String>,
+    source_content: Arc<str>,
 }
 
 impl ReportsBag {
-    fn new(file_name: Arc<MPath>, source_content: Arc<String>) -> Self {
+    fn new(file_name: Arc<MPath>, source_content: Arc<str>) -> Self {
         Self { reports: Vec::new(), file: file_name, source_content }
     }
 
@@ -25,7 +25,7 @@ impl ReportsBag {
         REPORTS_BAG.lock().expect("Failed to lock REPORTS_BAG")
     }
 
-    pub fn init(file_name: Arc<MPath>, source_content: Arc<String>) {
+    pub fn init(file_name: Arc<MPath>, source_content: Arc<str>) {
         let mut bag = Self::global_mut();
         *bag = Self::new(file_name, source_content);
     }
@@ -37,7 +37,7 @@ impl ReportsBag {
     pub fn print() {
         let bag = Self::global_mut();
         for report in &bag.reports {
-            let _ = report.print((bag.file.clone(), Source::from(bag.source_content.as_str())));
+            let _ = report.print((Arc::clone(&bag.file), Source::from(bag.source_content.clone())));
         }
     }
 
@@ -50,13 +50,13 @@ impl ReportsBag {
     }
 
     pub fn file() -> Arc<MPath> {
-        Self::global_mut().file.clone()
+        Arc::clone(&Self::global_mut().file)
     }
 }
 
 pub static REPORTS_BAG: Lazy<Mutex<ReportsBag>> = Lazy::new(|| {
     let dummy_path = Arc::new(MPath::new());
-    let dummy_source = Arc::new(String::new());
+    let dummy_source = Arc::<str>::from("");
     Mutex::new(ReportsBag::new(dummy_path, dummy_source))
 });
 

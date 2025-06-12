@@ -11,7 +11,7 @@ impl IdentTable {
         Self { interner: ThreadedRodeo::default() }
     }
 
-    pub fn intern(&mut self, name: &str) -> Spur {
+    pub fn intern(&self, name: &str) -> Spur {
         self.interner.get_or_intern(name)
     }
 

@@ -31,7 +31,7 @@ impl Codegen {
     }
 
     pub fn write(&mut self, text: &str) {
-        write!(self.content, "{}", text).unwrap();
+        write!(self.content, "{text}").unwrap();
     }
 
     pub fn writeln(&mut self, text: &str) {

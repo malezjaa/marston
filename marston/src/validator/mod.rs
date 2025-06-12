@@ -144,8 +144,7 @@ impl GenericValidator {
 
     pub fn string_not_empty(self) -> Self {
         self.check_value(|value, span| {
-            if let Some(s) = value.kind.as_string() {
-                if s.trim().is_empty() {
+            if let Some(s) = value.kind.as_string() && s.trim().is_empty() {
                     ReportsBag::add(report!(
                         kind: ReportKind::Error,
                         message: "String cannot be empty".to_string(),
@@ -155,7 +154,6 @@ impl GenericValidator {
                         notes: ["Provide a meaningful non-empty value"]
                     ));
                 }
-            }
         })
     }
 
@@ -273,8 +271,7 @@ impl GenericValidator {
 
     pub fn number_min(self, min: f64) -> Self {
         self.check_value(move |value, span| {
-            if let Some(n) = value.kind.as_number() {
-                if n < min {
+            if let Some(n) = value.kind.as_number() && n < min {
                     ReportsBag::add(report!(
                         kind: ReportKind::Error,
                         message: format!("Number must be at least {}", min),
@@ -283,16 +280,14 @@ impl GenericValidator {
                         },
                         notes: [format!("Minimum allowed value is {}", min)]
                     ));
-                }
             }
         })
     }
 
     pub fn number_max(self, max: f64) -> Self {
         self.check_value(move |value, span| {
-            if let Some(n) = value.kind.as_number() {
-                if n > max {
-                    ReportsBag::add(report!(
+            if let Some(n) = value.kind.as_number() && n > max {
+                ReportsBag::add(report!(
                         kind: ReportKind::Error,
                         message: format!("Number must be at most {}", max),
                         labels: {
@@ -300,7 +295,6 @@ impl GenericValidator {
                         },
                         notes: [format!("Maximum allowed value is {}", max)]
                     ));
-                }
             }
         })
     }
@@ -313,22 +307,21 @@ impl GenericValidator {
         let name_str = resolve(self.name);
 
         let parent_block = if let Some(parent_key) = self.parent {
-            match doc.find_block_by_name(parent_key) {
-                Some(block) => block,
-                None => {
-                    if self.required {
-                        let parent_name = resolve(parent_key);
-                        ReportsBag::add(report!(
-                            kind: ReportKind::Error,
-                            message: format!("Parent block '{}' not found", parent_name),
-                            labels: {
-                                Span::default() => format!("Cannot validate '{}' without parent '{}'", name_str, parent_name) => Color::BrightRed
-                            },
-                            notes: [format!("Ensure the '{}' block exists", parent_name)]
-                        ));
-                    }
-                    return;
+            if let Some(block) = doc.find_block_by_name(parent_key) {
+                block
+            } else {
+                if self.required {
+                    let parent_name = resolve(parent_key);
+                    ReportsBag::add(report!(
+                        kind: ReportKind::Error,
+                        message: format!("Parent block '{}' not found", parent_name),
+                        labels: {
+                            Span::default() => format!("Cannot validate '{}' without parent '{}'", name_str, parent_name) => Color::BrightRed
+                        },
+                        notes: [format!("Ensure the '{}' block exists", parent_name)]
+                    ));
                 }
+                return;
             }
         } else {
             return self.validate_in_document_root(doc, &name_str);
@@ -341,7 +334,7 @@ impl GenericValidator {
             found_as_attribute,
             found_as_block,
             &name_str,
-            &resolve(parent_block.name.as_ref().map(|n| n.key).unwrap_or(Spur::default())),
+            &resolve(parent_block.name.as_ref().map_or(Spur::default(), |n| n.key)),
             parent_block.span.clone(),
         );
     }
@@ -355,10 +348,10 @@ impl GenericValidator {
                 found_as_attribute = Some(attr);
             }
 
-            if let Some(block_name) = &block.name {
-                if block_name.key == self.name {
-                    found_as_block = Some(block);
-                }
+            if let Some(block_name) = &block.name
+                && block_name.key == self.name
+            {
+                found_as_block = Some(block);
             }
 
             if let Some(child_block) = block.find_child_block(self.name) {

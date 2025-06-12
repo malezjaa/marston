@@ -1,6 +1,7 @@
 use crate::Span;
 use lasso::{Key, Spur};
 use rustc_hash::FxHashMap;
+use std::ops::Range;
 
 pub mod ident_table;
 pub mod parser;
@@ -82,11 +83,11 @@ impl MarstonDocument {
 
 impl Block {
     pub fn new(name: Option<Interned>) -> Self {
-        Self { name, attributes: Vec::new(), children: Vec::new(), span: Default::default() }
+        Self { name, attributes: Vec::new(), children: Vec::new(), span: Range::default() }
     }
 
     pub fn with_attributes(name: Option<Interned>, attributes: Vec<Attribute>) -> Self {
-        Self { name, attributes, children: Vec::new(), span: Default::default() }
+        Self { name, attributes, children: Vec::new(), span: Range::default() }
     }
 
     pub fn add_attribute(&mut self, key: Interned, value: Value) {
@@ -94,7 +95,7 @@ impl Block {
     }
 
     pub fn get_attribute(&self, key: Spur) -> Option<&Attribute> {
-        self.attributes.iter().find(|attr| attr.key.key == key).map(|attr| attr)
+        self.attributes.iter().find(|attr| attr.key.key == key)
     }
 
     pub fn has_attribute(&self, key: Spur) -> bool {

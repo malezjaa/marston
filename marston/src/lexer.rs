@@ -70,9 +70,9 @@ impl Display for TokenKind {
             Dot => write!(f, "."),
             Equals => write!(f, "="),
             Comma => write!(f, ","),
-            Number(n) => write!(f, "{}", n),
-            String(s) => write!(f, "{}", s),
-            Identifier(ident) => write!(f, "{}", ident),
+            Number(n) => write!(f, "{n}"),
+            String(s) => write!(f, "{s}"),
+            Identifier(ident) => write!(f, "{ident}"),
         }
     }
 }

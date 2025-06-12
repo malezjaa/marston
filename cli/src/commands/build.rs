@@ -22,7 +22,7 @@ pub fn build_command(ctx: Context) -> MResult<()> {
     let ctx = Arc::new(Mutex::new(ctx));
     files.par_iter().try_for_each(|file| {
         let mut ctx = ctx.lock().unwrap();
-        ctx.process_file(&file)
+        ctx.process_file(file)
     })?;
 
     Ok(())

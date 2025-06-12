@@ -27,7 +27,7 @@ impl Gen for Block {
         if let Some(ref name) = self.name {
             let tag = resolve(name.key);
 
-            p.writeln(&format!("<{}>", tag));
+            p.writeln(&format!("<{tag}>"));
             p.indent();
 
             for node in &self.children {
@@ -36,7 +36,7 @@ impl Gen for Block {
 
             p.dedent();
 
-            p.writeln(&format!("</{}>", tag));
+            p.writeln(&format!("</{tag}>"));
         }
     }
 }

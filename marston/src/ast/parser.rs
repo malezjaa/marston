@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
     pub fn parse_block(&mut self) -> Block {
         let dot = self.consume(&TokenKind::Dot, "Blocks are required to start with a dot").cloned();
 
-        let mut attrs: Vec<Attribute> = Default::default();
+        let mut attrs: Vec<Attribute> = vec![];
 
         let identifier = self.consume_identifier("Expected block name");
         let mut block = Block::new(identifier);
@@ -55,11 +55,9 @@ impl<'a> Parser<'a> {
                 let attr = self.parse_attr();
 
                 if self.current().kind != TokenKind::ParenClose {
-                    // Use the previous token's end as the error span for missing comma
                     let error_span = self
                         .previous()
-                        .map(|t| t.span.to_end())
-                        .unwrap_or_else(|| self.current().span.clone());
+                        .map_or_else(|| self.current().span.clone(), |t| t.span.to_end());
 
                     self.consume_with_span(
                         &TokenKind::Comma,
@@ -90,19 +88,15 @@ impl<'a> Parser<'a> {
             while !self.check(&TokenKind::BraceClose) && !self.is_at_end() {
                 if self.current().kind == TokenKind::Dot {
                     if let Some(ahead) = self.peek_ahead(2) {
-                        match ahead.kind {
-                            TokenKind::Equals => {
-                                let attr = self.parse_attr();
-                                if let Some((attr_name, attr_value)) = attr {
-                                    attrs.push(Attribute::new(attr_name, attr_value));
-                                }
+                        if ahead.kind == TokenKind::Equals {
+                            let attr = self.parse_attr();
+                            if let Some((attr_name, attr_value)) = attr {
+                                attrs.push(Attribute::new(attr_name, attr_value));
                             }
-                            _ => {
-                                let child = self.parse_block();
-                                children.push(Node::Block(child));
-                            }
+                        } else {
+                            let child = self.parse_block();
+                            children.push(Node::Block(child));
                         }
-
                         self.match_token(&TokenKind::Comma);
                     } else {
                         self.error_at_current("Unexpected end of input after '.'");
@@ -160,12 +154,8 @@ impl<'a> Parser<'a> {
                 let mut values = Vec::new();
 
                 if !self.check(&TokenKind::BracketClose) {
-                    loop {
-                        if let Some(value) = self.parse_value() {
-                            values.push(value);
-                        } else {
-                            break;
-                        }
+                    while let Some(value) = self.parse_value() {
+                        values.push(value);
 
                         if self.match_token(&TokenKind::Comma) {
                             continue;
@@ -212,12 +202,12 @@ impl<'a> Parser<'a> {
     }
 
     pub fn advance(&mut self) -> Option<&Token> {
-        if !self.is_at_end() {
+        if self.is_at_end() {
+            None
+        } else {
             let token = &self.tokens[self.current];
             self.current += 1;
             Some(token)
-        } else {
-            None
         }
     }
 
@@ -343,14 +333,14 @@ impl<'a> Parser<'a> {
 
     /// Consume a specific identifier by name
     pub fn consume_specific_identifier(&mut self, expected: &str, message: &str) -> bool {
-        if let TokenKind::Identifier(name) = &self.current().kind {
-            if name == expected {
-                self.advance();
-                return true;
-            }
+        if let TokenKind::Identifier(name) = &self.current().kind
+            && name == expected
+        {
+            self.advance();
+            return true;
         }
 
-        self.error_at_current(&format!("Expected identifier '{}'. {}", expected, message));
+        self.error_at_current(&format!("Expected identifier '{expected}'. {message}"));
         false
     }
 
@@ -363,8 +353,8 @@ impl<'a> Parser<'a> {
 
     // Error reporting methods
     fn error_expected_token(&mut self, expected: &TokenKind, message: &str) {
-        let error_msg = format!("Expected '{}', found '{}'", expected, self.current().kind);
-        self.error_at_current(&format!("{}. {}", error_msg, message));
+        let error_msg = format!("Expected '{expected}', found '{}'", self.current().kind);
+        self.error_at_current(&format!("{error_msg}. {message}"));
     }
 
     fn error_expected_token_at_span(
@@ -373,18 +363,18 @@ impl<'a> Parser<'a> {
         message: &str,
         span: Range<usize>,
     ) {
-        let error_msg = format!("Expected '{}', found '{}'", expected, self.current().kind);
-        self.error_at(&format!("{}. {}", error_msg, message), span);
+        let error_msg = format!("Expected '{expected}', found '{}'", self.current().kind);
+        self.error_at(&format!("{error_msg}. {message}"), span);
     }
 
     fn error_expected_any_token(&mut self, expected: &[TokenKind], message: &str) {
-        let expected_names: Vec<String> = expected.iter().map(|t| format!("'{}'", t)).collect();
+        let expected_names: Vec<String> = expected.iter().map(|t| format!("'{t}'")).collect();
         let error_msg = format!(
             "Expected one of [{}], found '{}'",
             expected_names.join(", "),
             self.current().kind
         );
-        self.error_at_current(&format!("{}. {}", error_msg, message));
+        self.error_at_current(&format!("{error_msg}. {message}"));
     }
 
     fn error_expected_any_token_at_span(
@@ -393,13 +383,13 @@ impl<'a> Parser<'a> {
         message: &str,
         span: Range<usize>,
     ) {
-        let expected_names: Vec<String> = expected.iter().map(|t| format!("'{}'", t)).collect();
+        let expected_names: Vec<String> = expected.iter().map(|t| format!("'{t}'")).collect();
         let error_msg = format!(
             "Expected one of [{}], found '{}'",
             expected_names.join(", "),
             self.current().kind
         );
-        self.error_at(&format!("{}. {}", error_msg, message), span);
+        self.error_at(&format!("{error_msg}. {message}"), span);
     }
 
     fn error_expected_identifier(&mut self, message: &str) {
@@ -417,7 +407,7 @@ impl<'a> Parser<'a> {
         );
     }
 
-    pub fn error_at_current(&mut self, message: &str) {
+    pub fn error_at_current(&self, message: &str) {
         let token = self.current();
         ReportsBag::add(report!(
             kind: ReportKind::Error,
@@ -428,7 +418,7 @@ impl<'a> Parser<'a> {
         ));
     }
 
-    pub fn error_at(&mut self, message: &str, span: Range<usize>) {
+    pub fn error_at(&self, message: &str, span: Range<usize>) {
         ReportsBag::add(report!(
             kind: ReportKind::Error,
             message: message,
@@ -438,7 +428,7 @@ impl<'a> Parser<'a> {
         ));
     }
 
-    pub fn error_at_previous(&mut self, message: &str) {
+    pub fn error_at_previous(&self, message: &str) {
         if let Some(token) = self.previous() {
             ReportsBag::add(report!(
                 kind: ReportKind::Error,
@@ -452,9 +442,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_at_end(&mut self, message: &str) {
-        let end_span =
-            self.tokens.last().map(|token| token.span.end..token.span.end).unwrap_or(0..0);
+    fn error_at_end(&self, message: &str) {
+        let end_span = self.tokens.last().map_or(0..0, |token| token.span.end..token.span.end);
 
         ReportsBag::add(report!(
             kind: ReportKind::Error,
@@ -465,12 +454,7 @@ impl<'a> Parser<'a> {
         ));
     }
 
-    pub fn error_with_label(
-        &mut self,
-        message: &str,
-        label_span: Range<usize>,
-        label_message: &str,
-    ) {
+    pub fn error_with_label(&self, message: &str, label_span: Range<usize>, label_message: &str) {
         ReportsBag::add(report!(
             kind: ReportKind::Error,
             message: message,
@@ -480,7 +464,7 @@ impl<'a> Parser<'a> {
         ));
     }
 
-    pub fn error_with_note(&mut self, message: &str, note: &str) {
+    pub fn error_with_note(&self, message: &str, note: &str) {
         ReportsBag::add(report!(
             kind: ReportKind::Error,
             message: message,
@@ -490,8 +474,9 @@ impl<'a> Parser<'a> {
 
     /// Check if the current position matches a sequence of tokens
     pub fn check_sequence(&self, sequence: &[TokenKind]) -> bool {
-        sequence.iter().enumerate().all(|(i, expected)| {
-            self.peek_ahead(i).map(|token| token.kind == *expected).unwrap_or(false)
-        })
+        sequence
+            .iter()
+            .enumerate()
+            .all(|(i, expected)| self.peek_ahead(i).is_some_and(|token| token.kind == *expected))
     }
 }

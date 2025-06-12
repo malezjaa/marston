@@ -45,7 +45,7 @@ impl Context {
         self.current_file = Some(Arc::new(file.clone()));
         let content = read_string(file)?;
 
-        ReportsBag::init(self.current_file.clone().unwrap(), Arc::new(content.clone()));
+        ReportsBag::init(self.current_file.clone().unwrap(), Arc::<str>::from(content.clone()));
         let tokens = TokenKind::get_tokens(&content);
 
         let mut parser = Parser::new(self, tokens);
