@@ -93,8 +93,8 @@ impl Block {
         self.attributes.push(Attribute { key, value });
     }
 
-    pub fn get_attribute(&self, key: Spur) -> Option<&Value> {
-        self.attributes.iter().find(|attr| attr.key.key == key).map(|attr| &attr.value)
+    pub fn get_attribute(&self, key: Spur) -> Option<&Attribute> {
+        self.attributes.iter().find(|attr| attr.key.key == key).map(|attr| attr)
     }
 
     pub fn has_attribute(&self, key: Spur) -> bool {

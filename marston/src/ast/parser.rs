@@ -1,4 +1,5 @@
 use crate::{
+    Span,
     ast::{
         Attribute, Block, Interned, MarstonDocument, Node, Value, ValueKind,
         ident_table::get_or_intern,
@@ -12,7 +13,6 @@ use crate::{
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
 use log::debug;
-use rustc_hash::FxHashMap;
 use std::ops::Range;
 
 #[derive(Debug)]
@@ -417,12 +417,10 @@ impl<'a> Parser<'a> {
         );
     }
 
-    // Core error reporting methods - these remain unchanged for at_current/at_previous usage
     pub fn error_at_current(&mut self, message: &str) {
         let token = self.current();
         ReportsBag::add(report!(
             kind: ReportKind::Error,
-            span: token.span.clone(),
             message: message,
             labels: {
                 token.span.clone() => message => Color::BrightRed
@@ -433,7 +431,6 @@ impl<'a> Parser<'a> {
     pub fn error_at(&mut self, message: &str, span: Range<usize>) {
         ReportsBag::add(report!(
             kind: ReportKind::Error,
-            span: span.clone(),
             message: message,
             labels: {
                 span => message => Color::BrightRed
@@ -445,7 +442,6 @@ impl<'a> Parser<'a> {
         if let Some(token) = self.previous() {
             ReportsBag::add(report!(
                 kind: ReportKind::Error,
-                span: token.span.clone(),
                 message: message,
                 labels: {
                     token.span.clone() => message => Color::BrightRed
@@ -462,7 +458,6 @@ impl<'a> Parser<'a> {
 
         ReportsBag::add(report!(
             kind: ReportKind::Error,
-            span: end_span.clone(),
             message: format!("Unexpected end of input: {}", message),
             labels: {
                 end_span => "unexpected end of input" => Color::BrightRed
@@ -478,7 +473,6 @@ impl<'a> Parser<'a> {
     ) {
         ReportsBag::add(report!(
             kind: ReportKind::Error,
-            span: label_span.clone(),
             message: message,
             labels: {
                 label_span => label_message => Color::BrightRed
@@ -486,30 +480,12 @@ impl<'a> Parser<'a> {
         ));
     }
 
-    pub fn error_with_note(&mut self, message: &str, span: Range<usize>, note: &str) {
+    pub fn error_with_note(&mut self, message: &str, note: &str) {
         ReportsBag::add(report!(
             kind: ReportKind::Error,
-            span: span,
             message: message,
             notes: [note]
         ));
-    }
-
-    pub fn error_with_multiple_labels(
-        &mut self,
-        message: &str,
-        labels: &[(Range<usize>, &str, Color)],
-    ) {
-        let primary_span = labels.first().map(|(span, _, _)| span.clone()).unwrap_or(0..0);
-
-        let mut report = report!(
-            kind: ReportKind::Error,
-            span: primary_span,
-            message: message,
-            labels: {}
-        );
-
-        ReportsBag::add(report);
     }
 
     /// Check if the current position matches a sequence of tokens

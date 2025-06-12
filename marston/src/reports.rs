@@ -1,4 +1,4 @@
-use crate::MPath;
+use crate::{MPath, Span};
 use ariadne::{Report, Source};
 use once_cell::sync::Lazy;
 use std::{
@@ -64,7 +64,6 @@ pub static REPORTS_BAG: Lazy<Mutex<ReportsBag>> = Lazy::new(|| {
 macro_rules! report {
     (
         kind: $kind:expr,
-        span: $span:expr,
         message: $message:expr
         $(, labels: {
             $($label_span:expr => $label_msg:expr => $label_color:expr ),* $(,)?
@@ -73,7 +72,7 @@ macro_rules! report {
         $(,)?
     ) => {{
         #[allow(unused_mut)]
-        let mut report = Report::build($kind, (ReportsBag::file(), $span))
+        let mut report = Report::build($kind, (ReportsBag::file(), Span::default()))
             .with_message($message);
 
         $(
