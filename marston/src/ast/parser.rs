@@ -47,7 +47,6 @@ impl<'a> Parser<'a> {
         let identifier = self.consume_identifier("Expected block name");
         let mut block = Block::new(identifier);
 
-        // Parse inline attributes in parentheses
         if self.check(&TokenKind::ParenOpen) {
             self.advance();
 

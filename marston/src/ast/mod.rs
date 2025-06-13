@@ -1,7 +1,11 @@
 use crate::Span;
 use lasso::{Key, Spur};
 use rustc_hash::FxHashMap;
-use std::ops::Range;
+use std::{
+    fmt,
+    fmt::{Display, Formatter},
+    ops::Range,
+};
 
 pub mod ident_table;
 pub mod parser;
@@ -37,6 +41,23 @@ pub struct Block {
     pub span: Span,
 }
 
+impl Block {
+    pub fn find_all_by_name(&self, name: Spur) -> Vec<&Block> {
+        let mut results = Vec::new();
+        if let Some(n) = &self.name {
+            if n.key == name {
+                results.push(self);
+            }
+        }
+        for child in &self.children {
+            if let Node::Block(block) = child {
+                results.extend(block.find_all_by_name(name));
+            }
+        }
+        results
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Attribute {
     pub key: Interned,
@@ -61,6 +82,21 @@ pub enum ValueKind {
     Number(f64),
     Boolean(bool),
     Array(Vec<Value>),
+}
+
+impl Display for ValueKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ValueKind::String(s) => write!(f, "{}", s),
+            ValueKind::Number(n) => write!(f, "{}", n),
+            ValueKind::Boolean(b) => write!(f, "{}", b),
+            ValueKind::Array(arr) => write!(
+                f,
+                "[{}]",
+                arr.iter().map(|v| v.kind.to_string()).collect::<Vec<_>>().join(", ")
+            ),
+        }
+    }
 }
 
 impl MarstonDocument {

@@ -12,6 +12,7 @@ use crate::{
 use log::error;
 use logos::Logos;
 use std::sync::Arc;
+use crate::html::ir::ToHtmlIR;
 
 #[derive(Debug)]
 pub struct Context {
@@ -69,8 +70,9 @@ impl Context {
 
         ReportsBag::print();
 
+        let ir = doc.to_html_ir();
         let codegen = &mut Codegen::new();
-        doc.generate(codegen);
+        ir.generate(codegen);
         codegen.write_to_file(&file)?;
 
         Ok(())

@@ -8,7 +8,7 @@ use crate::{
     info::{BlockInfo, Info},
     report,
     reports::ReportsBag,
-    validator::{GenericValidator, Validate, ValidationRule},
+    validator::{GenericValidator, Validate, ValidationRule, rules::scripts::validate_script},
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use itertools::Itertools;
@@ -24,6 +24,7 @@ impl Validate for MarstonDocument {
             validate_lang,
             validate_charset,
             validate_viewport,
+            validate_script,
         ]
     }
 
@@ -39,7 +40,7 @@ impl Validate for MarstonDocument {
 pub fn validate_title(doc: &MarstonDocument, info: &mut Info) {
     GenericValidator::new("title")
         .as_attribute()
-        .in_parent("head")
+        .in_parent(vec!["head"])
         .required()
         .must_be_string()
         .string_not_empty()
@@ -62,7 +63,7 @@ pub fn validate_title(doc: &MarstonDocument, info: &mut Info) {
 pub fn validate_lang(doc: &MarstonDocument, info: &mut Info) {
     GenericValidator::new("lang")
         .as_attribute()
-        .in_parent("head")
+        .in_parent(vec!["head"])
         .required()
         .must_be_string()
         .string_not_empty()
@@ -73,7 +74,7 @@ pub fn validate_lang(doc: &MarstonDocument, info: &mut Info) {
 pub fn validate_charset(doc: &MarstonDocument, info: &mut Info) {
     GenericValidator::new("charset")
         .as_attribute()
-        .in_parent("head")
+        .in_parent(vec!["head"])
         .required()
         .must_be_string()
         .string_not_empty()
@@ -98,7 +99,7 @@ pub fn validate_charset(doc: &MarstonDocument, info: &mut Info) {
 pub fn validate_viewport(doc: &MarstonDocument, info: &mut Info) {
     GenericValidator::new("viewport")
         .as_attribute()
-        .in_parent("head")
+        .in_parent(vec!["head"])
         .must_be_string()
         .string_not_empty()
         .check_value(|value, span| {

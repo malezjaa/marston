@@ -2,10 +2,10 @@
     .title = "Home Page for Marston Foundation",
     .lang = "en-US",
     .description = "This is a sample Marston page with head and body blocks.",
-    .stylesheets = ["styles.css"],
-    .scripts = ["script.js"],
     .charset = "UTF-8",
     .viewport = "width=device-width, initial-scale=1.0",
+
+    .script(.src = "http://example.com/external.j", .async)
 }
 
 .body {

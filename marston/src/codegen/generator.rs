@@ -1,53 +1,56 @@
 use crate::{
-    ast::{Block, MarstonDocument, Node, ident_table::resolve},
+    ast::{
+        Block, MarstonDocument, Node, ValueKind,
+        ident_table::{get_or_intern, resolve},
+    },
     codegen::{Codegen, Gen},
+    html::ir::{IrDoc, IrNode},
 };
 use v_htmlescape::escape;
 
-impl Gen for MarstonDocument {
+impl Gen for IrDoc {
     fn generate(&self, p: &mut Codegen) {
         p.top_level = true;
         p.writeln("<!DOCTYPE html>");
         p.top_level = false;
 
-        p.writeln("<html>");
-        p.indent();
-
-        for block in &self.blocks {
+        for block in &self.root {
             block.generate(p);
         }
-
-        p.dedent();
-        p.writeln("</html>");
     }
 }
 
-impl Gen for Block {
+impl Gen for IrNode {
     fn generate(&self, p: &mut Codegen) {
-        if let Some(ref name) = self.name {
-            let tag = resolve(name.key);
-
-            p.writeln(&format!("<{tag}>"));
-            p.indent();
-
-            for node in &self.children {
-                node.generate(p);
-            }
-
-            p.dedent();
-
-            p.writeln(&format!("</{tag}>"));
-        }
-    }
-}
-
-impl Gen for Node {
-    fn generate(&self, p: &mut Codegen) {
-        p.top_level = false;
-
         match self {
-            Node::Block(block) => block.generate(p),
-            Node::Text(text) => p.writeln(&escape(text).to_string()),
+            IrNode::Element(element) => {
+                let tag = resolve(element.tag);
+                let attrs = element
+                    .attributes
+                    .iter()
+                    .map(|attr| {
+                        if let ValueKind::Boolean(bool) = attr.value {
+                            if bool { format!("{}", resolve(attr.key)) } else { "".to_string() }
+                        } else {
+                            format!("{}=\"{}\"", resolve(attr.key), &attr.value.to_string())
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                let space = if attrs.is_empty() { "" } else { " " };
+                p.writeln(&format!("<{tag}{space}{attrs}>"));
+                p.indent();
+
+                for node in &element.children {
+                    node.generate(p);
+                }
+
+                p.dedent();
+
+                p.writeln(&format!("</{tag}>"));
+            }
+            IrNode::Text(text) => p.writeln(&escape(text).to_string()),
         }
     }
 }
