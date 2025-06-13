@@ -135,9 +135,14 @@ impl<'a> Parser<'a> {
     pub fn parse_attr(&mut self) -> Option<(Interned, Value)> {
         let _dot = self.consume(&TokenKind::Dot, "Attributes are required to start with a dot")?;
         let identifier = self.consume_identifier("Expected attribute name")?;
-        self.consume(&TokenKind::Equals, "attribute name must be separated by an equals sign")?;
-        let value = self.parse_value()?;
-
+        let value =if self.check(&TokenKind::Equals) {
+            self.advance();
+          
+            self.parse_value()?
+        } else {
+            Value::new_default(identifier.span.clone())
+        };
+        
         Some((identifier, value))
     }
 

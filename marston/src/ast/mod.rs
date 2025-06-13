@@ -76,6 +76,13 @@ pub struct Value {
     pub span: Span,
 }
 
+impl Value {
+    /// Creates a new `Value` with boolean true.
+    pub fn new_default(span: Span) -> Self {
+        Self { kind: ValueKind::Boolean(true), span }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ValueKind {
     String(String),
