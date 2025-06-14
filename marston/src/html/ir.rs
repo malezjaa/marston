@@ -1,5 +1,6 @@
 use crate::ast::{Attribute, Block, MarstonDocument, Node, ValueKind, ident_table::get_or_intern};
 use lasso::Spur;
+use crate::ast::ident_table::resolve;
 
 pub struct IrDoc {
     pub root: Vec<IrNode>,
@@ -60,6 +61,13 @@ impl IrTransformBuilder {
             attr_key: get_or_intern(attr_key),
             target_tag: get_or_intern(target_tag),
             value_mapper: Box::new(value_mapper),
+        }))
+    }
+
+    pub fn move_attribute_to_root(self, from_tag: &str, attr_key: &str) -> Self {
+        self.add_transformation(Box::new(MoveAttributeToRootTransform {
+            from_tag: get_or_intern(from_tag),
+            attr_key: get_or_intern(attr_key),
         }))
     }
 
@@ -133,6 +141,42 @@ impl AttributeToTagTransform {
         for child in &mut element.children {
             if let IrNode::Element(child_element) = child {
                 self.apply_recursive(child_element);
+            }
+        }
+    }
+}
+
+pub struct MoveAttributeToRootTransform {
+    from_tag: Spur,
+    attr_key: Spur,
+}
+
+impl IrTransformation for MoveAttributeToRootTransform {
+    fn apply(&self, element: &mut IrElement) {
+        let mut attrs_to_move = Vec::new();
+
+        self.collect_attributes_recursive(element, &mut attrs_to_move);
+
+        element.attributes.extend(attrs_to_move);
+    }
+}
+
+impl MoveAttributeToRootTransform {
+    fn collect_attributes_recursive(
+        &self,
+        element: &mut IrElement,
+        attrs_to_move: &mut Vec<IrAttribute>,
+    ) {
+        if element.tag == self.from_tag {
+            if let Some(pos) = element.attributes.iter().position(|attr| attr.key == self.attr_key)
+            {
+                attrs_to_move.push(element.attributes.remove(pos));
+            }
+        }
+
+        for child in &mut element.children {
+            if let IrNode::Element(child_element) = child {
+                self.collect_attributes_recursive(child_element, attrs_to_move);
             }
         }
     }
@@ -246,7 +290,7 @@ impl AttributeToMetaTransform {
                 new_element.attributes.push(IrAttribute {
                     key: get_or_intern("name"),
                     value: ValueKind::String(
-                        crate::ast::ident_table::resolve(self.meta_name).to_string(),
+                        resolve(self.meta_name).to_string(),
                     ),
                 });
                 new_element
@@ -310,7 +354,7 @@ impl ToHtmlIR for MarstonDocument {
         root.children = elements;
 
         let transformer = IrTransformBuilder::new()
-            .move_attribute("head", "html", "lang")
+            .move_attribute_to_root("head", "lang")
             .attribute_to_tag("head", "title", "title", |value| {
                 Some(vec![IrNode::Text(value.as_string().unwrap_or(&"".to_string()).clone())])
             })

@@ -482,7 +482,6 @@ impl GenericValidator {
 
     pub fn string_valid_url(self) -> Self {
         self.check_value(|value, span| {
-            println!("{:#?}", value);
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
 
