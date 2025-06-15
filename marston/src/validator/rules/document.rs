@@ -20,7 +20,6 @@ impl Validate for MarstonDocument {
         vec![
             ensure_required_tags,
             validate_block_name_uniqueness,
-            validate_unique_head_attributes,
             validate_lang,
             validate_charset,
             validate_title,
@@ -176,7 +175,7 @@ pub fn validate_block_name_uniqueness(_: &MarstonDocument, info: &mut Info) {
         if (!is_unique_tag(name.as_str())) {
             continue;
         }
-        
+
         ReportsBag::add(report!(
             kind: ReportKind::Error,
             message: format!("Duplicate block name '{}' found", name),
@@ -212,44 +211,5 @@ pub fn ensure_required_tags(doc: &MarstonDocument, info: &mut Info) {
             },
             notes: ["Ensure that your document includes all required tags in its root"]
         ));
-    }
-}
-
-pub fn validate_unique_head_attributes(doc: &MarstonDocument, info: &mut Info) {
-    let unique_attrs = ["title", "lang", "base"];
-
-    if info.no_head {
-        return;
-    }
-
-    if let Some(head) = doc.find_block_by_name(get_or_intern("head")) {
-        let mut attr_spans: HashMap<String, Vec<Span>> = HashMap::new();
-
-        for attr in &head.attributes {
-            let name = resolve(attr.key.key);
-            attr_spans.entry(name).or_default().push(attr.key.span.clone());
-        }
-
-        for unique in unique_attrs {
-            if let Some(spans) = attr_spans.get_mut(&*unique) {
-                let first = spans.first().unwrap().clone();
-                spans.remove(0);
-
-                let rest =
-                    spans.iter().map(|s| (s.clone(), "Attribute redefined here")).collect_vec();
-
-                if spans.len() + 1 > 1 {
-                    ReportsBag::add(report!(
-                        kind: ReportKind::Error,
-                        message: format!("Duplicate attribute '{}' found in head", unique),
-                        labels: {
-                            first.clone() => format!("Attribute '{}' first defined here", unique) => Color::BrightRed
-                        },
-                        label_vec: rest => Color::Yellow,
-                        notes: [format!("'{}' is a head attribute that should occur only once per document", unique)],
-                    ));
-                }
-            }
-        }
     }
 }
