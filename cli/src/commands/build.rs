@@ -12,7 +12,7 @@ pub fn build_command(ctx: Context) -> MResult<()> {
         clear_dir(ctx.build_dir())?;
     }
 
-    let pattern = format!("{}/**/*.mr", ctx.main_dir());
+    let pattern = format!("{}/**/*", ctx.main_dir());
 
     let files: Vec<MPath> = glob(&pattern)?
         .filter_map(Result::ok)
@@ -22,6 +22,14 @@ pub fn build_command(ctx: Context) -> MResult<()> {
     let ctx = Arc::new(Mutex::new(ctx));
     files.par_iter().try_for_each(|file| {
         let mut ctx = ctx.lock().unwrap();
+        if file.extension() != Some("mr") {
+            let stripped = file.strip_prefix(ctx.main_dir())?;
+            let out = ctx.build_dir().join(stripped);
+
+            fs_err::copy(file, &out)?;
+            return Ok(());
+        }
+
         ctx.process_file(file)
     })?;
 

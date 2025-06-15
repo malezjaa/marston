@@ -16,3 +16,4 @@ marston-core = { workspace = true }
 rayon = { workspace = true }
 sysinfo = { workspace = true }
 terminal_size = { workspace = true }
+fs-err = { workspace = true }

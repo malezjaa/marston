@@ -570,6 +570,7 @@ dependencies = [
  "clap",
  "colored 3.0.0",
  "fern",
+ "fs-err",
  "glob",
  "log",
  "marston-core",

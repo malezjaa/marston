@@ -10,7 +10,7 @@
         "Sample",
         "Page"
     ],
-    .base(.href="https://example.com/"),
+    .link(.href="main.css", .rel="stylesheet"),
 
     .script(.src = "https://example.com/external.js", .async),
 }
