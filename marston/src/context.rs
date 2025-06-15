@@ -4,6 +4,7 @@ use crate::{
     codegen::{Codegen, Gen},
     config::Config,
     fs::read_string,
+    html::ir::ToHtmlIR,
     info::{Info, InfoWalker},
     lexer::{Token, TokenKind},
     reports::ReportsBag,
@@ -12,7 +13,6 @@ use crate::{
 use log::error;
 use logos::Logos;
 use std::sync::Arc;
-use crate::html::ir::ToHtmlIR;
 
 #[derive(Debug)]
 pub struct Context {

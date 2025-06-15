@@ -195,7 +195,7 @@ impl GenericValidator {
             }
         })
     }
-    
+
     pub fn array_not_empty(self) -> Self {
         self.check_value(|value, span| {
             if let Some(array) = value.kind.as_array() {
