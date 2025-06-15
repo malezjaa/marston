@@ -1,7 +1,7 @@
 use crate::{
     Span,
     ast::{
-        Attribute, Block, MarstonDocument, Value,
+        Attribute, Block, MarstonDocument, Value, ValueKind,
         ident_table::{get_or_intern, resolve},
     },
     html::tags::is_unique_tag,
@@ -25,6 +25,7 @@ impl Validate for MarstonDocument {
             validate_charset,
             validate_viewport,
             validate_script,
+            validate_keywords
         ]
     }
 
@@ -68,6 +69,33 @@ pub fn validate_lang(doc: &MarstonDocument, info: &mut Info) {
         .must_be_string()
         .string_not_empty()
         .string_valid_language_code()
+        .validate(doc, info);
+}
+
+pub fn validate_keywords(doc: &MarstonDocument, info: &mut Info) {
+    GenericValidator::new("keywords")
+        .as_attribute()
+        .must_be_array(Some(ValueKind::dummy_string()))
+        .in_parent(vec!["head"])
+        .array_not_empty()
+        .check_value(|value, span| {
+            if let Some(arr) = value.kind.as_array() {
+                for item in arr {
+                    if let Some(s) = item.kind.as_string() {
+                        if s.trim().is_empty() {
+                            ReportsBag::add(report!(
+                                kind: ReportKind::Warning,
+                                message: "Empty keyword found".to_string(),
+                                labels: {
+                                    item.span.clone() => "Keywords should not contain empty strings" => Color::BrightYellow
+                                },
+                                notes: ["Consider removing empty keywords from the list"]
+                            ));
+                        }
+                    }
+                }
+            }
+        })
         .validate(doc, info);
 }
 

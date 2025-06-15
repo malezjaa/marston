@@ -1,6 +1,9 @@
-use crate::ast::{Attribute, Block, MarstonDocument, Node, ValueKind, ident_table::get_or_intern};
+use crate::ast::{
+    Attribute, Block, MarstonDocument, Node, ValueKind,
+    ident_table::{get_or_intern, resolve},
+};
+use itertools::Itertools;
 use lasso::Spur;
-use crate::ast::ident_table::resolve;
 
 pub struct IrDoc {
     pub root: Vec<IrNode>,
@@ -94,11 +97,18 @@ impl IrTransformBuilder {
         }))
     }
 
-    pub fn attribute_to_meta_tag(self, source_tag: &str, attr_key: &str, meta_name: &str) -> Self {
+    pub fn attribute_to_meta_tag(
+        self,
+        source_tag: &str,
+        attr_key: &str,
+        meta_name: &str,
+        value_mapper: Option<Box<dyn Fn(&ValueKind) -> ValueKind>>,
+    ) -> Self {
         self.add_transformation(Box::new(AttributeToMetaTransform {
             source_tag: get_or_intern(source_tag),
             attr_key: get_or_intern(attr_key),
             meta_name: get_or_intern(meta_name),
+            value_mapper,
         }))
     }
 
@@ -274,6 +284,7 @@ pub struct AttributeToMetaTransform {
     source_tag: Spur,
     attr_key: Spur,
     meta_name: Spur,
+    value_mapper: Option<Box<dyn Fn(&ValueKind) -> ValueKind>>,
 }
 
 impl IrTransformation for AttributeToMetaTransform {
@@ -289,13 +300,15 @@ impl AttributeToMetaTransform {
                 let mut new_element = IrElement::new(get_or_intern("meta"));
                 new_element.attributes.push(IrAttribute {
                     key: get_or_intern("name"),
-                    value: ValueKind::String(
-                        resolve(self.meta_name).to_string(),
-                    ),
+                    value: ValueKind::String(resolve(self.meta_name).to_string()),
                 });
-                new_element
-                    .attributes
-                    .push(IrAttribute { key: get_or_intern("content"), value: attr.value.clone() });
+                let value = if let Some(mapper) = &self.value_mapper {
+                    mapper(&attr.value)
+                } else {
+                    attr.value.clone()
+                };
+
+                new_element.attributes.push(IrAttribute { key: get_or_intern("content"), value });
                 element.children.push(IrNode::Element(new_element));
             }
         }
@@ -361,9 +374,27 @@ impl ToHtmlIR for MarstonDocument {
             .remove_attribute("head", "title")
             .attribute_to_element("head", "charset", "meta")
             .remove_attribute("head", "charset")
-            .attribute_to_meta_tag("head", "viewport", "viewport")
+            .attribute_to_meta_tag("head", "viewport", "viewport", None)
             .remove_attribute("head", "viewport")
-            .attribute_to_meta_tag("head", "description", "description");
+            .attribute_to_meta_tag("head", "description", "description", None)
+            .remove_attribute("head", "description")
+            .attribute_to_meta_tag(
+                "head",
+                "keywords",
+                "keywords",
+                Some(Box::new(|value| {
+                    if let Some(value) = value.as_array() {
+                        return ValueKind::String(
+                            value.iter().map(|v| v.kind.as_string().unwrap()).join(", "),
+                        );
+                    } else {
+                        panic!("keywords must be an array. should be checked in the validators");
+                    }
+                })),
+            )
+            .remove_attribute("head", "keywords")
+            .attribute_to_meta_tag("head", "author", "author", None)
+            .remove_attribute("head", "author");
 
         transformer.apply(&mut root);
 

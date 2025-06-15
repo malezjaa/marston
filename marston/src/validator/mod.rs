@@ -1,7 +1,7 @@
 use crate::{
     Span,
     ast::{
-        Attribute, Block, MarstonDocument, Value,
+        Attribute, Block, MarstonDocument, Value, ValueKind,
         ident_table::{get_or_intern, resolve},
     },
     html::{lang::is_valid_language_pattern, tags::is_unique_tag},
@@ -137,6 +137,40 @@ impl GenericValidator {
         self
     }
 
+    pub fn must_be_array(mut self, inner_ty: Option<ValueKind>) -> Self {
+        self.type_checks.push(Box::new(move |value: &Value, span: &Span| {
+            if let Some(array) = value.kind.as_array() {
+                if let Some(inner_ty) = inner_ty.clone() {
+                    for item in array {
+                        if !item.kind.is_same_kind(&inner_ty) {
+                            ReportsBag::add(report!(
+                                kind: ReportKind::Error,
+                                message: format!("Array item must be of type {:?}", inner_ty),
+                                labels: {
+                                    span.clone() => "Expected an array of specific type" => Color::BrightRed
+                                },
+                                notes: ["Ensure all items in the array match the expected type"]
+                            ));
+                            return false;
+                        }
+                    }
+                }
+                true
+            } else {
+                ReportsBag::add(report!(
+                    kind: ReportKind::Error,
+                    message: "Value must be an array".to_string(),
+                    labels: {
+                        span.clone() => "Expected an array value here" => Color::BrightRed
+                    },
+                    notes: ["Use square brackets to define an array, e.g., [1, 2, 3]"]
+                ));
+                false
+            }
+        }));
+        self
+    }
+
     pub fn check_value<F>(mut self, check: F) -> Self
     where
         F: Fn(&Value, &Span) + 'static,
@@ -158,6 +192,22 @@ impl GenericValidator {
                     },
                     notes: ["Provide a meaningful non-empty value"]
                 ));
+            }
+        })
+    }
+    
+    pub fn array_not_empty(self) -> Self {
+        self.check_value(|value, span| {
+            if let Some(array) = value.kind.as_array() {
+                if array.is_empty() {
+                    ReportsBag::add(report!(
+                        kind: ReportKind::Error,
+                        message: "Array cannot be empty".to_string(),
+                        labels: {
+                            span.clone() => "This array must not be empty" => Color::BrightRed
+                        },
+                    ))
+                }
             }
         })
     }

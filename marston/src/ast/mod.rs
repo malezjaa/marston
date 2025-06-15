@@ -91,6 +91,23 @@ pub enum ValueKind {
     Array(Vec<Value>),
 }
 
+impl ValueKind {
+    /// Only checks the kind ignoring the inner value.
+    pub fn is_same_kind(&self, other: &ValueKind) -> bool {
+        match (self, other) {
+            (ValueKind::String(_), ValueKind::String(_)) => true,
+            (ValueKind::Number(_), ValueKind::Number(_)) => true,
+            (ValueKind::Boolean(_), ValueKind::Boolean(_)) => true,
+            (ValueKind::Array(_), ValueKind::Array(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn dummy_string() -> Self {
+        Self::String("".to_string())
+    }
+}
+
 impl Display for ValueKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {

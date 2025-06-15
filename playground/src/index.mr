@@ -4,6 +4,12 @@
     .description = "This is a sample Marston page with head and body blocks.",
     .charset = "UTF-8",
     .viewport = "width=device-width, initial-scale=1.0",
+    .author = "Marston Foundation",
+    .keywords = [
+        "Foundation",
+        "Sample",
+        "Page"
+    ],
 
     .script(.src = "https://example.com/external.js", .async)
 }
