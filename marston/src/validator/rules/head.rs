@@ -8,7 +8,10 @@ use crate::{
     info::{BlockInfo, Info},
     report,
     reports::ReportsBag,
-    validator::{GenericValidator, Validate, ValidationRule, rules::scripts::validate_script},
+    validator::{
+        GenericValidator, ValidUrlOptions, Validate, ValidationRule,
+        rules::scripts::validate_script, validate_block_no_children,
+    },
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use itertools::Itertools;
@@ -132,5 +135,26 @@ pub fn validate_viewport(doc: &MarstonDocument, info: &mut Info) {
                 ));
             }
         })
+        .validate(doc, info);
+}
+pub fn validate_base(doc: &MarstonDocument, info: &mut Info) {
+    if (info.no_head) {
+        return;
+    }
+
+    GenericValidator::new("base")
+        .as_block()
+        .in_parent(vec!["head"])
+        .block_no_children()
+        .require_one_of_attrs(vec!["href", "target"])
+        .validate(doc, info);
+
+    GenericValidator::new("href")
+        .as_attribute()
+        .in_parent(vec!["head", "base"])
+        .must_be_string()
+        .string_not_empty()
+        .string_valid_url(Some(ValidUrlOptions::new(&["javascript", "data"])))
+        .disallowed_chars(vec!['\n', '\t', '<'])
         .validate(doc, info);
 }

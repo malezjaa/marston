@@ -28,7 +28,7 @@ fn validate_script_block(script_block: &Block, info: &mut Info, doc: &MarstonDoc
         .must_be_string()
         .in_parent(vec!["head", "script"])
         .string_not_empty()
-        .string_valid_url()
+        .string_valid_url(None)
         .string_file_extension(".js")
         .string_prefer_https()
         .validate(doc, info);

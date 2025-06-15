@@ -56,6 +56,10 @@ impl Block {
         }
         results
     }
+
+    pub fn name(&self) -> Interned {
+        self.name.as_ref().unwrap().clone()
+    }
 }
 
 #[derive(Debug, Clone)]

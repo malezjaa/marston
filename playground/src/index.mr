@@ -10,7 +10,7 @@
         "Sample",
         "Page"
     ],
-    .base(.href="/ddaw/"),
+    .base(.href="https://example.com/"),
 
     .script(.src = "https://example.com/external.js", .async),
 }

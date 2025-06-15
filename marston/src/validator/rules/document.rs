@@ -12,7 +12,7 @@ use crate::{
         GenericValidator, Validate, ValidationRule,
         rules::{
             head::{
-                validate_charset, validate_keywords, validate_lang, validate_title,
+                validate_base, validate_charset, validate_keywords, validate_lang, validate_title,
                 validate_viewport,
             },
             scripts::validate_script,
@@ -35,6 +35,7 @@ impl Validate for MarstonDocument {
             validate_viewport,
             validate_keywords,
             validate_script,
+            validate_base,
         ]
     }
 

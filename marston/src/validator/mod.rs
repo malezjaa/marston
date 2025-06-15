@@ -11,7 +11,10 @@ use crate::{
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
+use rustc_hash::FxHashSet;
+use std::{collections::HashSet, fmt::format};
 use unic_langid::LanguageIdentifier;
+use url::Url;
 
 pub mod rules;
 
@@ -44,6 +47,7 @@ pub struct GenericValidator {
     type_checks: Vec<Box<dyn Fn(&Value, &Span) -> bool>>,
     value_checks: Vec<Box<dyn Fn(&Value, &Span)>>,
     no_children: bool,
+    require_on_of_attrs: Vec<String>,
 }
 
 impl GenericValidator {
@@ -56,6 +60,7 @@ impl GenericValidator {
             type_checks: Vec::new(),
             value_checks: Vec::new(),
             no_children: false,
+            require_on_of_attrs: Vec::new(),
         }
     }
 
@@ -77,6 +82,11 @@ impl GenericValidator {
 
     pub fn required(mut self) -> Self {
         self.required = true;
+        self
+    }
+
+    pub fn require_one_of_attrs(mut self, attrs: Vec<&str>) -> Self {
+        self.require_on_of_attrs = attrs.iter().map(|s| s.to_string()).collect();
         self
     }
 
@@ -192,6 +202,28 @@ impl GenericValidator {
                     },
                     notes: ["Provide a meaningful non-empty value"]
                 ));
+            }
+        })
+    }
+
+    pub fn disallowed_chars(self, disallowed: Vec<char>) -> Self {
+        let disallowed: FxHashSet<char> = disallowed.into_iter().collect();
+        self.check_value(move |value, span| {
+            if let Some(s) = value.kind.as_string() {
+                let chars = s.chars();
+
+                for char in chars {
+                    if disallowed.contains(&char) {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Error,
+                            message: format!("Disallowed character found: '{}'", char),
+                            labels: {
+                                span.clone() => format!("Disallowed character found: '{}'", char) => Color::BrightRed
+                            },
+                            notes: ["Remove the disallowed character"]
+                        ));
+                    }
+                }
             }
         })
     }
@@ -327,7 +359,7 @@ impl GenericValidator {
     pub fn number_min(self, min: f64) -> Self {
         self.check_value(move |value, span| {
             if let Some(n) = value.kind.as_number() && n < min {
-                    ReportsBag::add(report!(
+                ReportsBag::add(report!(
                         kind: ReportKind::Error,
                         message: format!("Number must be at least {}", min),
                         labels: {
@@ -454,15 +486,36 @@ impl GenericValidator {
                 self.validate_attribute_value(&attr.value, &attr.value.span);
             }
             (None, Some(_block), TargetType::Block) | (None, Some(_block), TargetType::Either) => {
-                if self.no_children {
+                if self.no_children && !_block.children.is_empty() {
                     ReportsBag::add(report!(
                         kind: ReportKind::Error,
                         message: format!("'{}' should not have children", name_str),
                         labels: {
-                            parent_span => format!("'{}' defined as block but should not have children", name_str) => Color::BrightRed
+                            _block.name().span => format!("'{}' defined as block but should not have children", name_str) => Color::BrightRed
                         },
                         notes: [format!("Remove any child blocks or attributes from '{}'", name_str)]
                     ));
+                }
+
+                let required = self.require_on_of_attrs.clone();
+                let mut found = false;
+                if required.len() > 0 {
+                    for attr in &required {
+                        if let Some(attr) = _block.get_attribute(get_or_intern(attr)) {
+                            found = true;
+                            self.validate_attribute_value(&attr.value, &attr.value.span);
+                        }
+                    }
+                    if !found {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Error,
+                            message: format!("'{}' should have one of the following attributes: {:?}", name_str, required),
+                            labels: {
+                                _block.name().span => format!("'{}' should have at least one of the following attributes: {:?}", name_str, required) => Color::BrightRed
+                            },
+                            notes: [format!("Add one of the following attributes to '{}': {:?}", name_str, required)]
+                        ))
+                    }
                 }
             }
             (Some(attr), _, TargetType::Block) => {
@@ -530,27 +583,38 @@ impl GenericValidator {
         }
     }
 
-    pub fn string_valid_url(self) -> Self {
+    pub fn string_valid_url(self, options: Option<ValidUrlOptions>) -> Self {
+        let options = options.unwrap_or_default();
+
         self.check_value(|value, span| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
 
-                if !trimmed.starts_with("http://")
-                    && !trimmed.starts_with("https://")
-                    && !trimmed.starts_with("//")
-                    && !trimmed.starts_with("/")
-                {
-                    ReportsBag::add(report!(
-                        kind: ReportKind::Warning,
-                        message: "Value should be a valid URL or path".to_string(),
-                        labels: {
-                            span.clone() => "Potentially invalid URL or path" => Color::BrightYellow
-                        },
-                        notes: [
-                            "Use absolute URLs (https://...) for external resources",
-                            "Use relative paths (/path/to/file) for local resources"
-                        ]
-                    ));
+                match Url::parse(trimmed) {
+                    Ok(url) => {
+                        if options.disallowed_protocols.iter().any(|&p| p == url.scheme()) {
+                            ReportsBag::add(report!(
+                                kind: ReportKind::Error,
+                                message: format!("Found disallowed URL protocol: {}", url.scheme()),
+                                labels: {
+                                    span.clone() => "disallowed invalid URL" => Color::BrightRed
+                                },
+                            ));
+                        }
+                    }
+                    Err(err) => {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Error,
+                            message: format!("Value should be a valid URL or path. {err}"),
+                            labels: {
+                                span.clone() => "Potentially invalid URL or path" => Color::BrightRed
+                            },
+                            notes: [
+                                "Use absolute URLs (https://...) for external resources",
+                                "Use relative paths (/path/to/file) for local resources"
+                            ]
+                        ));
+                    }
                 }
             }
         })
@@ -623,6 +687,17 @@ impl GenericValidator {
     pub fn block_no_children(mut self) -> Self {
         self.no_children = true;
         self
+    }
+}
+
+#[derive(Default)]
+pub struct ValidUrlOptions {
+    pub disallowed_protocols: &'static [&'static str],
+}
+
+impl ValidUrlOptions {
+    pub fn new(disallowed_protocols: &'static [&'static str]) -> Self {
+        Self { disallowed_protocols }
     }
 }
 
