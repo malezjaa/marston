@@ -39,16 +39,21 @@ impl Gen for IrNode {
                     .join(" ");
 
                 let space = if attrs.is_empty() { "" } else { " " };
-                p.writeln(&format!("<{tag}{space}{attrs}>"));
-                p.indent();
 
-                for node in &element.children {
-                    node.generate(p);
+                if element.children.is_empty() {
+                    p.writeln(&format!("<{tag}{space}{attrs}/>"));
+                } else {
+                    p.writeln(&format!("<{tag}{space}{attrs}>"));
+                    p.indent();
+
+                    for node in &element.children {
+                        node.generate(p);
+                    }
+
+                    p.dedent();
+
+                    p.writeln(&format!("</{tag}>"));
                 }
-
-                p.dedent();
-
-                p.writeln(&format!("</{tag}>"));
             }
             IrNode::Text(text) => p.writeln(&escape(text).to_string()),
         }
