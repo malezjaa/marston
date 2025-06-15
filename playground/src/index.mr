@@ -10,8 +10,9 @@
         "Sample",
         "Page"
     ],
+    .base(.href="/ddaw/"),
 
-    .script(.src = "https://example.com/external.js", .async)
+    .script(.src = "https://example.com/external.js", .async),
 }
 
 .body {

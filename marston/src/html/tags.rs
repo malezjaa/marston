@@ -20,7 +20,7 @@ macro_rules! define_tag_sets {
 }
 
 define_tag_sets! {
-    unique: [ "html", "head", "body", "title" ],
+    unique: [ "html", "head", "body", "title", "base" ],
     html_default_scope: [ "applet", "caption", "html", "table", "td", "th", "marquee", "object", "template" ],
     list_item_scope:    [ "ol", "ul" ],
     button_scope:       [ "button" ],

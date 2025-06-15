@@ -25,6 +25,7 @@ pub struct Info {
     id_counter: usize,
     current_parent: Option<usize>,
     current_depth: usize,
+    pub no_head: bool,
 }
 
 impl Info {
@@ -35,6 +36,7 @@ impl Info {
             id_counter: 0,
             current_parent: None,
             current_depth: 0,
+            no_head: false,
         }
     }
 

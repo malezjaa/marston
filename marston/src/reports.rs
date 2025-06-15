@@ -66,8 +66,11 @@ macro_rules! report {
         kind: $kind:expr,
         message: $message:expr
         $(, labels: {
-            $($label_span:expr => $label_msg:expr => $label_color:expr ),* $(,)?
+            $(
+                $label_key:expr => $label_msg:expr => $label_color:expr
+            ),* $(,)?
         })?
+        $(, label_vec: $label_vec:expr $(=> $vec_color:expr)? )?
         $(, notes: [$($note:expr),* $(,)?])?
         $(,)?
     ) => {{
@@ -77,11 +80,20 @@ macro_rules! report {
 
         $(
             $(
-                let label = Label::new((ReportsBag::file(), $label_span))
-                    .with_message($label_msg).with_color($label_color);
-
+                let label = Label::new((ReportsBag::file(), $label_key))
+                    .with_message($label_msg)
+                    .with_color($label_color);
                 report = report.with_label(label);
             )*
+        )?
+
+        $(
+            for (span, msg) in $label_vec {
+                let label = Label::new((ReportsBag::file(), span.clone()))
+                    .with_message(msg)
+                    .with_color(report!(@vec_color $($vec_color)?));
+                report = report.with_label(label);
+            }
         )?
 
         $(
@@ -92,4 +104,8 @@ macro_rules! report {
 
         report.finish()
     }};
+
+    // Helper arm for optional color
+    (@vec_color $color:expr) => { $color };
+    (@vec_color) => { ::ariadne::Color::Red }; // default color
 }
