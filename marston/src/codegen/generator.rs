@@ -40,7 +40,8 @@ impl Gen for IrNode {
 
                 let space = if attrs.is_empty() { "" } else { " " };
 
-                if element.children.is_empty() {
+                /// self-closed script tag doesn't work in all browsers
+                if element.children.is_empty() && tag != "script" {
                     p.writeln(&format!("<{tag}{space}{attrs}/>"));
                 } else {
                     p.writeln(&format!("<{tag}{space}{attrs}>"));
