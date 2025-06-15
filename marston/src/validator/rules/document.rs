@@ -25,7 +25,7 @@ impl Validate for MarstonDocument {
             validate_charset,
             validate_viewport,
             validate_script,
-            validate_keywords
+            validate_keywords,
         ]
     }
 
@@ -81,17 +81,15 @@ pub fn validate_keywords(doc: &MarstonDocument, info: &mut Info) {
         .check_value(|value, span| {
             if let Some(arr) = value.kind.as_array() {
                 for item in arr {
-                    if let Some(s) = item.kind.as_string() {
-                        if s.trim().is_empty() {
-                            ReportsBag::add(report!(
-                                kind: ReportKind::Warning,
-                                message: "Empty keyword found".to_string(),
-                                labels: {
-                                    item.span.clone() => "Keywords should not contain empty strings" => Color::BrightYellow
-                                },
-                                notes: ["Consider removing empty keywords from the list"]
-                            ));
-                        }
+                    if let Some(s) = item.kind.as_string() && s.trim().is_empty() {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Warning,
+                            message: "Empty keyword found".to_string(),
+                            labels: {
+                                item.span.clone() => "Keywords should not contain empty strings" => Color::BrightYellow
+                            },
+                            notes: ["Consider removing empty keywords from the list"]
+                        ));
                     }
                 }
             }
@@ -131,18 +129,15 @@ pub fn validate_viewport(doc: &MarstonDocument, info: &mut Info) {
         .must_be_string()
         .string_not_empty()
         .check_value(|value, span| {
-            if let Some(s) = value.kind.as_string() {
-                let lower = s.trim().to_lowercase();
-                if !lower.contains("width=device-width") {
-                    ReportsBag::add(report!(
-                        kind: ReportKind::Warning,
-                        message: "Viewport should include 'width=device-width' for mobile compatibility".to_string(),
-                        labels: {
-                            span.clone() => "Consider adding 'width=device-width' to viewport" => Color::BrightYellow
-                        },
-                        notes: ["Example: 'width=device-width, initial-scale=1.0'"]
-                    ));
-                }
+            if let Some(s) = value.kind.as_string() && !s.trim().to_lowercase().contains("width=device-width") {
+                ReportsBag::add(report!(
+                    kind: ReportKind::Warning,
+                    message: "Viewport should include 'width=device-width' for mobile compatibility".to_string(),
+                    labels: {
+                        span.clone() => "Consider adding 'width=device-width' to viewport" => Color::BrightYellow
+                    },
+                    notes: ["Example: 'width=device-width, initial-scale=1.0'"]
+                ));
             }
         })
         .validate(doc, info);
