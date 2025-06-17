@@ -12,7 +12,7 @@ use crate::{
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
 use rustc_hash::FxHashSet;
-use std::{collections::HashSet, fmt::format};
+use std::{collections::HashSet, fmt::format, path::PathBuf};
 use unic_langid::LanguageIdentifier;
 use url::Url;
 
@@ -32,7 +32,7 @@ pub trait Validate: Sized {
     fn validate(&self, info: &mut Info);
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum TargetType {
     Attribute,
     Block,
@@ -393,60 +393,29 @@ impl GenericValidator {
     pub fn validate(&self, doc: &MarstonDocument, info: &mut Info) {
         let name_str = resolve(self.name);
 
-        let parent_block = if let Some(parent_keys) = &self.parent {
-            let mut current_block: Option<&Block> = None;
+        if let Some(parent_keys) = &self.parent {
+            let parents = doc.find_in_parent(parent_keys);
 
-            for (i, key) in parent_keys.iter().enumerate() {
-                let key = key.clone();
-                let block = if i == 0 {
-                    doc.find_block_by_name(key)
-                } else {
-                    current_block.and_then(|b| b.find_child_block(key))
-                };
+            for parent in parents {
+                let found_as_blocks = parent.find_all_child_blocks(self.name);
+                let found_as_attrs = parent.get_attribute(self.name);
 
-                match block {
-                    Some(b) => current_block = Some(b),
-                    None => {
-                        if self.required {
-                            let missing_name = resolve(key);
-                            let path: Vec<_> = parent_keys.iter().map(|k| resolve(*k)).collect();
-
-                            ReportsBag::add(report!(
-                                kind: ReportKind::Error,
-                                message: format!("Parent chain {:?} is incomplete: '{}' not found", path, missing_name),
-                                labels: {
-                                    Span::default() => format!("Cannot validate '{}' because '{}' is missing in parent chain", name_str, missing_name) => Color::BrightRed
-                                },
-                                notes: [format!("Ensure the full parent chain {:?} exists", path)]
-                            ));
-                        }
-                        return;
-                    }
-                }
+                self.validate_found_items(
+                    found_as_attrs,
+                    found_as_blocks,
+                    &name_str,
+                    &resolve(parent.name().key),
+                    parent.name().span,
+                )
             }
-
-            current_block.unwrap()
         } else {
-            return self.validate_in_document_root(doc, &name_str);
-        };
-
-        let found_as_attribute = parent_block.get_attribute(self.name);
-        let found_as_block = parent_block.find_child_block(self.name);
-
-        let parent_name = resolve(parent_block.name.as_ref().map_or(Spur::default(), |n| n.key));
-
-        self.validate_found_items(
-            found_as_attribute,
-            found_as_block,
-            &name_str,
-            &parent_name,
-            parent_block.span.clone(),
-        );
+            self.validate_in_document_root(doc, &name_str);
+        }
     }
 
     fn validate_in_document_root(&self, doc: &MarstonDocument, name_str: &str) {
         let mut found_as_attribute = None;
-        let mut found_as_block = None;
+        let mut found_as_block = vec![];
 
         for block in &doc.blocks {
             if let Some(attr) = block.get_attribute(self.name) {
@@ -456,12 +425,10 @@ impl GenericValidator {
             if let Some(block_name) = &block.name
                 && block_name.key == self.name
             {
-                found_as_block = Some(block);
+                found_as_block.push(block);
             }
 
-            if let Some(child_block) = block.find_child_block(self.name) {
-                found_as_block = Some(child_block);
-            }
+            found_as_block.extend(block.find_all_child_blocks(self.name));
         }
 
         self.validate_found_items(
@@ -473,49 +440,57 @@ impl GenericValidator {
         );
     }
 
+    pub fn validate_block(&self, block: &Block, name_str: &str) {
+        if self.no_children && !block.children.is_empty() {
+            ReportsBag::add(report!(
+                kind: ReportKind::Error,
+                message: format!("'{}' should not have children", name_str),
+                labels: {
+                    block.name().span => format!("'{}' defined as block but should not have children", name_str) => Color::BrightRed
+                },
+                notes: [format!("Remove any child blocks or attributes from '{}'", name_str)]
+            ));
+        }
+
+        let required = self.require_on_of_attrs.clone();
+        let mut found = false;
+        if required.len() > 0 {
+            for attr in &required {
+                if let Some(attr) = block.get_attribute(get_or_intern(attr)) {
+                    found = true;
+                    self.validate_attribute_value(&attr.value, &attr.value.span);
+                }
+            }
+            if !found {
+                ReportsBag::add(report!(
+                    kind: ReportKind::Error,
+                    message: format!("'{}' should have one of the following attributes: {:?}", name_str, required),
+                    labels: {
+                        block.name().span => format!("'{}' should have at least one of the following attributes: {:?}", name_str, required) => Color::BrightRed
+                    },
+                    notes: [format!("Add one of the following attributes to '{}': {:?}", name_str, required)]
+                ))
+            }
+        }
+    }
+
     fn validate_found_items(
         &self,
         found_as_attribute: Option<&Attribute>,
-        found_as_block: Option<&Block>,
+        found_as_block: Vec<&Block>,
         name_str: &str,
-        parent_name: &str,
+        parent: &str,
         parent_span: Span,
     ) {
-        match (found_as_attribute, found_as_block, self.target_type) {
+        let blocks = if found_as_block.is_empty() { None } else { Some(found_as_block) };
+
+        match (found_as_attribute, blocks, self.target_type) {
             (Some(attr), None, TargetType::Attribute) | (Some(attr), None, TargetType::Either) => {
                 self.validate_attribute_value(&attr.value, &attr.value.span);
             }
-            (None, Some(_block), TargetType::Block) | (None, Some(_block), TargetType::Either) => {
-                if self.no_children && !_block.children.is_empty() {
-                    ReportsBag::add(report!(
-                        kind: ReportKind::Error,
-                        message: format!("'{}' should not have children", name_str),
-                        labels: {
-                            _block.name().span => format!("'{}' defined as block but should not have children", name_str) => Color::BrightRed
-                        },
-                        notes: [format!("Remove any child blocks or attributes from '{}'", name_str)]
-                    ));
-                }
-
-                let required = self.require_on_of_attrs.clone();
-                let mut found = false;
-                if required.len() > 0 {
-                    for attr in &required {
-                        if let Some(attr) = _block.get_attribute(get_or_intern(attr)) {
-                            found = true;
-                            self.validate_attribute_value(&attr.value, &attr.value.span);
-                        }
-                    }
-                    if !found {
-                        ReportsBag::add(report!(
-                            kind: ReportKind::Error,
-                            message: format!("'{}' should have one of the following attributes: {:?}", name_str, required),
-                            labels: {
-                                _block.name().span => format!("'{}' should have at least one of the following attributes: {:?}", name_str, required) => Color::BrightRed
-                            },
-                            notes: [format!("Add one of the following attributes to '{}': {:?}", name_str, required)]
-                        ))
-                    }
+            (None, Some(blocks), TargetType::Block) | (None, Some(blocks), TargetType::Either) => {
+                for block in blocks {
+                    self.validate_block(block, name_str);
                 }
             }
             (Some(attr), _, TargetType::Block) => {
@@ -528,28 +503,35 @@ impl GenericValidator {
                     notes: [format!("Define '{}' as a block instead of an attribute", name_str)]
                 ));
             }
-            (_, Some(block), TargetType::Attribute) => {
-                let block_span =
-                    if let Some(name) = &block.name { name.span.clone() } else { Span::default() };
-                ReportsBag::add(report!(
-                    kind: ReportKind::Error,
-                    message: format!("'{}' should be an attribute, not a block", name_str),
-                    labels: {
-                        block_span => format!("'{}' found as block but expected as attribute", name_str) => Color::BrightRed
-                    },
-                    notes: [format!("Define '{}' as an attribute instead of a block", name_str)]
-                ));
+            (_, Some(blocks), TargetType::Attribute) => {
+                for block in blocks {
+                    let block_span = if let Some(name) = &block.name {
+                        name.span.clone()
+                    } else {
+                        Span::default()
+                    };
+                    ReportsBag::add(report!(
+                        kind: ReportKind::Error,
+                        message: format!("'{}' should be an attribute, not a block", name_str),
+                        labels: {
+                            block_span => format!("'{}' found as block but expected as attribute", name_str) => Color::BrightRed
+                        },
+                        notes: [format!("Define '{}' as an attribute instead of a block", name_str)]
+                    ));
+                }
             }
-            (Some(attr), Some(block), _) => {
-                ReportsBag::add(report!(
-                    kind: ReportKind::Error,
-                    message: format!("'{}' defined as both attribute and block", name_str),
-                    labels: {
-                        attr.value.span.clone() => format!("'{}' defined as attribute here", name_str) => Color::BrightRed,
-                        block.name.as_ref().map(|n| n.span.clone()).unwrap_or_default() => format!("'{}' defined as block here", name_str) => Color::BrightRed
-                    },
-                    notes: [format!("'{}' should be defined only once, either as attribute or block", name_str)]
-                ));
+            (Some(attr), Some(blocks), _) => {
+                for block in blocks {
+                    ReportsBag::add(report!(
+                        kind: ReportKind::Error,
+                        message: format!("'{}' defined as both attribute and block", name_str),
+                        labels: {
+                            attr.value.span.clone() => format!("'{}' defined as attribute here", name_str) => Color::BrightRed,
+                            block.name.as_ref().map(|n| n.span.clone()).unwrap_or_default() => format!("'{}' defined as block here", name_str) => Color::BrightRed
+                        },
+                        notes: [format!("'{}' should be defined only once, either as attribute or block", name_str)]
+                    ));
+                }
             }
             (None, None, _) => {
                 if self.required {
@@ -562,7 +544,7 @@ impl GenericValidator {
                         kind: ReportKind::Error,
                         message: format!("Missing required {} '{}'", expected_type, name_str),
                         labels: {
-                            parent_span => format!("'{}' {} is required in '{}'", name_str, expected_type, parent_name) => Color::BrightRed
+                            parent_span => format!("'{}' {} is required in '{}'", name_str, expected_type, parent) => Color::BrightRed
                         },
                         notes: [format!("Add the required '{}' {}", name_str, expected_type)]
                     ));
@@ -586,7 +568,7 @@ impl GenericValidator {
     pub fn string_valid_url(self, options: Option<ValidUrlOptions>) -> Self {
         let options = options.unwrap_or_default();
 
-        self.check_value(|value, span| {
+        self.check_value(move |value, span| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
 
@@ -603,6 +585,10 @@ impl GenericValidator {
                         }
                     }
                     Err(err) => {
+                        if options.allow_paths && trimmed.parse::<PathBuf>().is_ok() {
+                            return;
+                        }
+
                         ReportsBag::add(report!(
                             kind: ReportKind::Error,
                             message: format!("Value should be a valid URL or path. {err}"),
@@ -693,11 +679,12 @@ impl GenericValidator {
 #[derive(Default)]
 pub struct ValidUrlOptions {
     pub disallowed_protocols: &'static [&'static str],
+    pub allow_paths: bool,
 }
 
 impl ValidUrlOptions {
-    pub fn new(disallowed_protocols: &'static [&'static str]) -> Self {
-        Self { disallowed_protocols }
+    pub fn new(disallowed_protocols: &'static [&'static str], allow_paths: bool) -> Self {
+        Self { disallowed_protocols, allow_paths }
     }
 }
 

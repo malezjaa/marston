@@ -11,8 +11,10 @@
         "Page"
     ],
     .link(.href="main.css", .rel="stylesheet"),
+    .link(.rel="apple-touch-icon", .href="apple-icon-114.png"),
 
-    .script(.src = "https://example.com/external.js", .async),
+    .script(.src = "http://example.com/external.js", .async),
+    .script(.src = "http://example.com/external.js", .async),
 }
 
 .body {

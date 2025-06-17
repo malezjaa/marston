@@ -1,4 +1,7 @@
-use crate::Span;
+use crate::{
+    Span,
+    ast::ident_table::{get_or_intern, resolve},
+};
 use lasso::{Key, Spur};
 use rustc_hash::FxHashMap;
 use std::{
@@ -15,6 +18,42 @@ pub struct MarstonDocument {
     pub blocks: Vec<Block>,
 }
 
+impl MarstonDocument {
+    pub fn find_in_parent(&self, names: &Vec<Spur>) -> Vec<&Block> {
+        if names.is_empty() {
+            return Vec::new();
+        }
+
+        let mut current_blocks: Vec<&Block> = Vec::new();
+
+        let first_name = names[0];
+        for block in &self.blocks {
+            if let Some(ref interned) = block.name {
+                if interned.key == first_name {
+                    current_blocks.push(block);
+                }
+            }
+        }
+
+        for name in names.iter().skip(1) {
+            let mut next_blocks = Vec::new();
+            for block in current_blocks {
+                for child in &block.children {
+                    if let Node::Block(child_block) = child {
+                        if let Some(ref interned) = child_block.name {
+                            if interned.key == *name {
+                                next_blocks.push(child_block);
+                            }
+                        }
+                    }
+                }
+            }
+            current_blocks = next_blocks;
+        }
+
+        current_blocks
+    }
+}
 #[derive(Debug, Clone)]
 pub enum Node {
     Block(Block),
@@ -35,6 +74,7 @@ impl Interned {
 
 #[derive(Debug, Clone)]
 pub struct Block {
+    pub id: usize,
     pub name: Option<Interned>,
     pub attributes: Vec<Attribute>,
     pub children: Vec<Node>,
@@ -59,6 +99,22 @@ impl Block {
 
     pub fn name(&self) -> Interned {
         self.name.as_ref().unwrap().clone()
+    }
+
+    pub fn find_all_child_blocks(&self, name: Spur) -> Vec<&Block> {
+        let mut results = Vec::new();
+
+        for child in &self.children {
+            if let Node::Block(child) = child {
+                if let Some(child_name) = &child.name
+                    && child_name.key == name
+                {
+                    results.push(child);
+                }
+            }
+        }
+
+        results
     }
 }
 
@@ -139,31 +195,15 @@ impl MarstonDocument {
     pub fn find_block_by_name(&self, name: Spur) -> Option<&Block> {
         self.blocks.iter().find(|e| e.name.as_ref().map(|n| n.key) == Some(name))
     }
-
-    pub fn find_blocks_by_name(&self, name: Spur) -> Vec<&Block> {
-        self.blocks.iter().filter(|e| e.name.as_ref().map(|n| n.key) == Some(name)).collect()
-    }
 }
 
 impl Block {
-    pub fn new(name: Option<Interned>) -> Self {
-        Self { name, attributes: Vec::new(), children: Vec::new(), span: Range::default() }
-    }
-
-    pub fn with_attributes(name: Option<Interned>, attributes: Vec<Attribute>) -> Self {
-        Self { name, attributes, children: Vec::new(), span: Range::default() }
-    }
-
-    pub fn add_attribute(&mut self, key: Interned, value: Value) {
-        self.attributes.push(Attribute { key, value });
+    pub fn new(name: Option<Interned>, id: usize) -> Self {
+        Self { name, attributes: Vec::new(), children: Vec::new(), span: Range::default(), id }
     }
 
     pub fn get_attribute(&self, key: Spur) -> Option<&Attribute> {
         self.attributes.iter().find(|attr| attr.key.key == key)
-    }
-
-    pub fn has_attribute(&self, key: Spur) -> bool {
-        self.attributes.iter().any(|attr| attr.key.key == key)
     }
 
     pub fn add_child(&mut self, child: Node) {
@@ -176,33 +216,6 @@ impl Block {
 
     pub fn add_block(&mut self, block: Block) {
         self.children.push(Node::Block(block));
-    }
-
-    pub fn find_child_block(&self, name: Spur) -> Option<&Block> {
-        self.children.iter().find_map(|child| {
-            if let Node::Block(block) = child {
-                if block.name.as_ref().map(|n| n.key) == Some(name) { Some(block) } else { None }
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn find_child_blocks(&self, name: Spur) -> Vec<&Block> {
-        self.children
-            .iter()
-            .filter_map(|child| {
-                if let Node::Block(block) = child {
-                    if block.name.as_ref().map(|n| n.key) == Some(name) {
-                        Some(block)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 
     pub fn has_name(&self) -> bool {

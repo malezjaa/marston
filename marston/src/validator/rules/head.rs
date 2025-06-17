@@ -154,7 +154,7 @@ pub fn validate_base(doc: &MarstonDocument, info: &mut Info) {
         .in_parent(vec!["head", "base"])
         .must_be_string()
         .string_not_empty()
-        .string_valid_url(Some(ValidUrlOptions::new(&["javascript", "data"])))
+        .string_valid_url(Some(ValidUrlOptions::new(&["javascript", "data"], false)))
         .disallowed_chars(vec!['\n', '\t', '<'])
         .validate(doc, info);
 }

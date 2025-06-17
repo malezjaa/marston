@@ -13,15 +13,21 @@ pub fn validate_script(doc: &MarstonDocument, info: &mut Info) {
         let blocks = head_block.find_all_by_name(get_or_intern("script"));
 
         for script_block in blocks {
-            validate_script_block(script_block, info, doc);
+            validate_block_no_children(script_block, "Script");
+            validate_block_not_empty(script_block, "Script", Some("src"));
+
+            validate_mutually_exclusive_attributes(
+                script_block,
+                "async",
+                "defer",
+                "Script has both 'async' and 'defer' attributes",
+                &[
+                    "When both are present, 'async' takes precedence",
+                    "Consider using only one loading strategy for clarity",
+                ],
+            );
         }
     }
-}
-
-fn validate_script_block(script_block: &Block, info: &mut Info, doc: &MarstonDocument) {
-    validate_block_no_children(script_block, "Script");
-
-    validate_block_not_empty(script_block, "Script", Some("src"));
 
     GenericValidator::new("src")
         .as_attribute()
@@ -52,15 +58,4 @@ fn validate_script_block(script_block: &Block, info: &mut Info, doc: &MarstonDoc
         .string_not_empty()
         .string_allowed_values(&["text/javascript", "application/javascript", "module"])
         .validate(doc, info);
-
-    validate_mutually_exclusive_attributes(
-        script_block,
-        "async",
-        "defer",
-        "Script has both 'async' and 'defer' attributes",
-        &[
-            "When both are present, 'async' takes precedence",
-            "Consider using only one loading strategy for clarity",
-        ],
-    );
 }

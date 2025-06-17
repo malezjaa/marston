@@ -21,11 +21,12 @@ pub struct Parser<'a> {
     pub tokens: Vec<Token>,
     pub current: usize,
     pub doc: MarstonDocument,
+    pub last_block_id: usize,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(ctx: &'a Context, tokens: Vec<Token>) -> Self {
-        Self { ctx, tokens, current: 0, doc: MarstonDocument::new() }
+        Self { ctx, tokens, current: 0, doc: MarstonDocument::new(), last_block_id: 0 }
     }
 
     pub fn parse(&mut self) {
@@ -45,7 +46,9 @@ impl<'a> Parser<'a> {
         let mut attrs: Vec<Attribute> = vec![];
 
         let identifier = self.consume_identifier("Expected block name");
-        let mut block = Block::new(identifier);
+        self.last_block_id += 1;
+        
+        let mut block = Block::new(identifier,  self.last_block_id);
 
         if self.check(&TokenKind::ParenOpen) {
             self.advance();

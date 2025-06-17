@@ -20,6 +20,7 @@ toml = { workspace = true }
 unic-langid = "0.9.6"
 v_htmlescape = "0.15.8"
 url = "2.5.4"
+mime = "0.3.17"
 
 [lints]
 workspace = true

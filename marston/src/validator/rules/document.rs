@@ -23,6 +23,7 @@ use ariadne::{Color, Label, Report, ReportKind};
 use itertools::Itertools;
 use lasso::Spur;
 use std::{collections::HashMap, fmt::format, sync::Arc};
+use crate::validator::rules::link::validate_link;
 
 impl Validate for MarstonDocument {
     fn rules() -> Vec<ValidationRule<Self>> {
@@ -36,6 +37,7 @@ impl Validate for MarstonDocument {
             validate_keywords,
             validate_script,
             validate_base,
+            validate_link
         ]
     }
 
