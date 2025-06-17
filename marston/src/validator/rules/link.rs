@@ -47,7 +47,6 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
         .must_be_string()
         .string_not_empty()
         .check_value(|val, span| {
-            println!("{:#?}", val);
             if let Some(val) = val.kind.as_string()
                 && let Err(err) = val.parse::<Mime>()
             {

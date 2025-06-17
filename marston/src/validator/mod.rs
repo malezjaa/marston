@@ -48,6 +48,7 @@ pub struct GenericValidator {
     value_checks: Vec<Box<dyn Fn(&Value, &Span)>>,
     no_children: bool,
     require_on_of_attrs: Vec<String>,
+    disallowed: bool,
 }
 
 impl GenericValidator {
@@ -61,6 +62,7 @@ impl GenericValidator {
             value_checks: Vec::new(),
             no_children: false,
             require_on_of_attrs: Vec::new(),
+            disallowed: false,
         }
     }
 
@@ -87,6 +89,11 @@ impl GenericValidator {
 
     pub fn require_one_of_attrs(mut self, attrs: Vec<&str>) -> Self {
         self.require_on_of_attrs = attrs.iter().map(|s| s.to_string()).collect();
+        self
+    }
+
+    pub fn disallowed(mut self) -> Self {
+        self.disallowed = true;
         self
     }
 
@@ -490,7 +497,18 @@ impl GenericValidator {
             }
             (None, Some(blocks), TargetType::Block) | (None, Some(blocks), TargetType::Either) => {
                 for block in blocks {
-                    self.validate_block(block, name_str);
+                    if self.disallowed {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Error,
+                            message: format!("'{}' should not be used", name_str),
+                            labels: {
+                                block.name().span.clone() => format!("'{}' found as block but should not be used", name_str) => Color::BrightRed
+                            },
+                            notes: [format!("Remove '{}' from '{}'", name_str, parent)]
+                        ));
+                    } else {
+                        self.validate_block(block, name_str);
+                    }
                 }
             }
             (Some(attr), _, TargetType::Block) => {

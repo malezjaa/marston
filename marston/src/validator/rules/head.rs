@@ -158,3 +158,15 @@ pub fn validate_base(doc: &MarstonDocument, info: &mut Info) {
         .disallowed_chars(vec!['\n', '\t', '<'])
         .validate(doc, info);
 }
+
+pub fn disallowed_style(doc: &MarstonDocument, info: &mut Info) {
+    if (info.no_head) {
+        return;
+    }
+
+    GenericValidator::new("style")
+        .as_block()
+        .in_parent(vec!["head"])
+        .disallowed()
+        .validate(doc, info);
+}
