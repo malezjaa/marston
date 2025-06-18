@@ -19,11 +19,17 @@ pub struct Context {
     config: Config,
     cwd: MPath,
     current_file: Option<Arc<MPath>>,
+    pub had_errors: bool,
 }
 
 impl Context {
     pub fn new(cwd: &MPath) -> MResult<Self> {
-        Ok(Context { config: Config::find_recursively(cwd)?, cwd: cwd.clone(), current_file: None })
+        Ok(Context {
+            config: Config::find_recursively(cwd)?,
+            cwd: cwd.clone(),
+            current_file: None,
+            had_errors: false,
+        })
     }
 
     pub fn name(&self) -> String {
@@ -57,7 +63,7 @@ impl Context {
         let file = self.build_dir().join(file_name).with_extension("html");
         ReportsBag::print();
 
-        if ReportsBag::has_errors() {
+        if ReportsBag::has_reports() {
             error!("Returning errors because of errors in parsing.");
             return Ok(());
         }
@@ -70,10 +76,14 @@ impl Context {
 
         ReportsBag::print();
 
-        let ir = doc.to_html_ir();
-        let codegen = &mut Codegen::new();
-        ir.generate(codegen);
-        codegen.write_to_file(&file)?;
+        if ReportsBag::has_errors() || self.had_errors {
+            self.had_errors = true;
+        } else {
+            let ir = doc.to_html_ir();
+            let codegen = &mut Codegen::new();
+            ir.generate(codegen);
+            codegen.write_to_file(&file)?;
+        }
 
         Ok(())
     }

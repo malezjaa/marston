@@ -11,6 +11,7 @@ pub fn build_command(ctx: Context) -> MResult<()> {
     if ctx.build_dir().exists() {
         clear_dir(ctx.build_dir())?;
     }
+    fs_err::create_dir_all(ctx.build_dir())?;
 
     let pattern = format!("{}/**/*", ctx.main_dir());
 

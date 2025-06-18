@@ -14,11 +14,12 @@ pub struct ReportsBag {
     reports: Vec<MReport>,
     file: Arc<MPath>,
     source_content: Arc<str>,
+    pub has_errors: bool,
 }
 
 impl ReportsBag {
     fn new(file_name: Arc<MPath>, source_content: Arc<str>) -> Self {
-        Self { reports: Vec::new(), file: file_name, source_content }
+        Self { reports: Vec::new(), file: file_name, source_content, has_errors: false }
     }
 
     fn global_mut() -> std::sync::MutexGuard<'static, Self> {
@@ -37,12 +38,21 @@ impl ReportsBag {
     pub fn print() {
         let bag = Self::global_mut();
         for report in &bag.reports {
-            let _ = report.print((Arc::clone(&bag.file), Source::from(bag.source_content.clone())));
+            let _ =
+                report.eprint((Arc::clone(&bag.file), Source::from(bag.source_content.clone())));
         }
     }
 
-    pub fn has_errors() -> bool {
+    pub fn has_reports() -> bool {
         !Self::global_mut().reports.is_empty()
+    }
+
+    pub fn has_errors() -> bool {
+        Self::global_mut().has_errors
+    }
+
+    pub fn mark_errors() {
+        Self::global_mut().has_errors = true;
     }
 
     pub fn clear_errors() {
@@ -102,10 +112,12 @@ macro_rules! report {
             )*
         )?
 
+        if $kind == ReportKind::Error {
+            ReportsBag::mark_errors();
+        }
         report.finish()
     }};
 
-    // Helper arm for optional color
     (@vec_color $color:expr) => { $color };
-    (@vec_color) => { ::ariadne::Color::Red }; // default color
+    (@vec_color) => { ::ariadne::Color::Red };
 }

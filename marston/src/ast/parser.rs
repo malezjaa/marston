@@ -33,10 +33,6 @@ impl<'a> Parser<'a> {
         while !self.is_at_end() {
             let block = self.parse_block();
             self.doc.add_block(block);
-
-            if ReportsBag::has_errors() {
-                break;
-            }
         }
     }
 
@@ -47,8 +43,8 @@ impl<'a> Parser<'a> {
 
         let identifier = self.consume_identifier("Expected block name");
         self.last_block_id += 1;
-        
-        let mut block = Block::new(identifier,  self.last_block_id);
+
+        let mut block = Block::new(identifier, self.last_block_id);
 
         if self.check(&TokenKind::ParenOpen) {
             self.advance();
