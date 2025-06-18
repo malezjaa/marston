@@ -8,6 +8,7 @@ use crate::{
     info::{BlockInfo, Info},
     report,
     reports::ReportsBag,
+    validator::conditions::{Condition, ValidationContext},
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
@@ -16,6 +17,7 @@ use std::{collections::HashSet, fmt::format, path::PathBuf};
 use unic_langid::LanguageIdentifier;
 use url::Url;
 
+mod conditions;
 pub mod rules;
 
 pub type ValidationRule<T> = fn(&T, &mut Info);
@@ -32,7 +34,7 @@ pub trait Validate: Sized {
     fn validate(&self, info: &mut Info);
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TargetType {
     Attribute,
     Block,
@@ -49,6 +51,7 @@ pub struct GenericValidator {
     no_children: bool,
     require_on_of_attrs: Vec<String>,
     disallowed: bool,
+    required_condition: Option<Box<dyn Condition>>,
 }
 
 impl GenericValidator {
@@ -63,6 +66,7 @@ impl GenericValidator {
             no_children: false,
             require_on_of_attrs: Vec::new(),
             disallowed: false,
+            required_condition: None,
         }
     }
 
@@ -413,6 +417,7 @@ impl GenericValidator {
                     &name_str,
                     &resolve(parent.name().key),
                     parent.name().span,
+                    Some(parent),
                 )
             }
         } else {
@@ -444,6 +449,7 @@ impl GenericValidator {
             name_str,
             "document root",
             Span::default(),
+            None,
         );
     }
 
@@ -486,8 +492,9 @@ impl GenericValidator {
         found_as_attribute: Option<&Attribute>,
         found_as_block: Vec<&Block>,
         name_str: &str,
-        parent: &str,
+        parent_name: &str,
         parent_span: Span,
+        parent: Option<&Block>,
     ) {
         let blocks = if found_as_block.is_empty() { None } else { Some(found_as_block) };
 
@@ -504,7 +511,7 @@ impl GenericValidator {
                             labels: {
                                 block.name().span.clone() => format!("'{}' found as block but should not be used", name_str) => Color::BrightRed
                             },
-                            notes: [format!("Remove '{}' from '{}'", name_str, parent)]
+                            notes: [format!("Remove '{}' from '{}'", name_str, parent_name)]
                         ));
                     } else {
                         self.validate_block(block, name_str);
@@ -552,20 +559,32 @@ impl GenericValidator {
                 }
             }
             (None, None, _) => {
-                if self.required {
-                    let expected_type = match self.target_type {
-                        TargetType::Attribute => "attribute",
-                        TargetType::Block => "block",
-                        TargetType::Either => "attribute or block",
-                    };
-                    ReportsBag::add(report!(
-                        kind: ReportKind::Error,
-                        message: format!("Missing required {} '{}'", expected_type, name_str),
-                        labels: {
-                            parent_span => format!("'{}' {} is required in '{}'", name_str, expected_type, parent) => Color::BrightRed
-                        },
-                        notes: [format!("Add the required '{}' {}", name_str, expected_type)]
-                    ));
+                let expected_type = match self.target_type {
+                    TargetType::Attribute => "attribute",
+                    TargetType::Block => "block",
+                    TargetType::Either => "attribute or block",
+                };
+
+                let report = report!(
+                    kind: ReportKind::Error,
+                    message: format!("Missing required {} '{}'", expected_type, name_str),
+                    labels: {
+                        parent_span => format!("'{}' {} is required in '{}'", name_str, expected_type, parent_name) => Color::BrightRed
+                    },
+                    notes: [format!("Add the required '{}' {}", name_str, expected_type)]
+                );
+
+                if self.target_type == TargetType::Attribute
+                    && let Some(parent) = parent
+                    && let Some(predicate) = &self.required_condition
+                {
+                    if !predicate.evaluate(&ValidationContext::new(parent)) {
+                        return;
+                    }
+
+                    ReportsBag::add(report);
+                } else if self.required {
+                    ReportsBag::add(report);
                 }
             }
         }
@@ -666,14 +685,14 @@ impl GenericValidator {
         })
     }
 
-    pub fn string_allowed_values(self, allowed: &'static [&'static str]) -> Self {
+    pub fn string_allowed_values(self, allowed: &'static [&'static str], strict: bool) -> Self {
         self.check_value(move |value, span| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim().to_lowercase();
 
                 if !allowed.iter().any(|&v| trimmed == v.to_lowercase()) {
                     ReportsBag::add(report!(
-                        kind: ReportKind::Warning,
+                        kind: if strict { ReportKind::Error } else { ReportKind::Warning },
                         message: format!("Uncommon value '{}' specified", s.trim()),
                         labels: {
                             span.clone() => "Consider if this value is appropriate" => Color::BrightYellow

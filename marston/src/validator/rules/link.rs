@@ -4,7 +4,7 @@ use crate::{
     info::Info,
     report,
     reports::ReportsBag,
-    validator::{GenericValidator, Label, Report, ValidUrlOptions},
+    validator::{GenericValidator, Label, Report, ValidUrlOptions, conditions::AttributeEquals},
 };
 use ariadne::{Color, ReportKind};
 use mime::Mime;
@@ -16,19 +16,22 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
         .string_not_empty()
         .required()
         .in_parent(vec!["head", "link"])
-        .string_allowed_values(&[
-            "alternate",
-            "dns-prefetch",
-            "icon",
-            "manifest",
-            "modulepreload",
-            "pingback",
-            "preconnect",
-            "prefetch",
-            "preload",
-            "prerender",
-            "stylesheet",
-        ])
+        .string_allowed_values(
+            &[
+                "alternate",
+                "dns-prefetch",
+                "icon",
+                "manifest",
+                "modulepreload",
+                "pingback",
+                "preconnect",
+                "prefetch",
+                "preload",
+                "prerender",
+                "stylesheet",
+            ],
+            false,
+        )
         .validate(doc, info);
 
     GenericValidator::new("href")
@@ -59,5 +62,30 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
                 ));
             }
         })
+        .validate(doc, info);
+
+    GenericValidator::new("as")
+        .in_parent(vec!["head", "link"])
+        .as_attribute()
+        .must_be_string()
+        .string_not_empty()
+        .required_if(AttributeEquals::new(|block| {
+            if let Some(rel) = block.get_attribute(get_or_intern("rel"))
+                && let Some(string) = rel.value.kind.as_string()
+            {
+                if string == "preload" {
+                    return true;
+                }
+            }
+
+            false
+        }))
+        .string_allowed_values(
+            &[
+                "audio", "document", "embed", "fetch", "font", "image", "object", "script",
+                "style", "track", "video", "worker",
+            ],
+            true,
+        )
         .validate(doc, info);
 }

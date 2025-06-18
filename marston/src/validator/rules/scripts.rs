@@ -56,6 +56,6 @@ pub fn validate_script(doc: &MarstonDocument, info: &mut Info) {
         .as_attribute()
         .must_be_string()
         .string_not_empty()
-        .string_allowed_values(&["text/javascript", "application/javascript", "module"])
+        .string_allowed_values(&["text/javascript", "application/javascript", "module"], false)
         .validate(doc, info);
 }
