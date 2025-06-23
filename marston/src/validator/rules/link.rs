@@ -23,16 +23,28 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
         .string_allowed_values(
             &[
                 "alternate",
+                "author",
+                "canonical",
+                "compression-dictionary",
                 "dns-prefetch",
+                "expect",
+                "help",
                 "icon",
+                "license",
                 "manifest",
+                "me",
                 "modulepreload",
+                "next",
                 "pingback",
                 "preconnect",
                 "prefetch",
                 "preload",
                 "prerender",
+                "prev",
+                "privacy-policy",
+                "search",
                 "stylesheet",
+                "terms-of-service",
             ],
             false,
         )
@@ -45,7 +57,9 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
         .must_be_string()
         .string_not_empty()
         .string_valid_url(Some(UrlValidation::new(
-            &[],
+            &[
+                "javascript", "data", "vbscript"
+            ],
             true,
             Some(RequiredExtension::new(
                 "css",
