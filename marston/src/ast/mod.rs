@@ -119,6 +119,14 @@ impl Block {
 }
 
 #[derive(Debug, Clone)]
+pub enum ValueKindHelper {
+    String,
+    Bool,
+    Array,
+    Number,
+}
+
+#[derive(Debug, Clone)]
 pub struct Attribute {
     pub key: Interned,
     pub value: Value,
@@ -202,8 +210,8 @@ impl Block {
         Self { name, attributes: Vec::new(), children: Vec::new(), span: Range::default(), id }
     }
 
-    pub fn get_attribute(&self, key: Spur) -> Option<&Attribute> {
-        self.attributes.iter().find(|attr| attr.key.key == key)
+    pub fn get_attribute(&self, key: &str) -> Option<&Attribute> {
+        self.attributes.iter().find(|attr| attr.key.key == get_or_intern(key))
     }
 
     pub fn add_child(&mut self, child: Node) {

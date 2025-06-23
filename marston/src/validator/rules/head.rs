@@ -9,14 +9,15 @@ use crate::{
     report,
     reports::ReportsBag,
     validator::{
-        GenericValidator, ValidUrlOptions, Validate, ValidationRule,
-        rules::scripts::validate_script, validate_block_no_children,
+        GenericValidator, Validate, ValidationRule,
+        conditions::AttributeEquals, rules::scripts::validate_script, validate_block_no_children,
     },
 };
 use ariadne::{Color, Label, Report, ReportKind};
 use itertools::Itertools;
 use lasso::Spur;
 use std::{collections::HashMap, fmt::format, sync::Arc};
+use crate::validator::url::{RequiredExtension, UrlValidation};
 
 pub fn validate_title(doc: &MarstonDocument, info: &mut Info) {
     GenericValidator::new("title")
@@ -65,7 +66,7 @@ pub fn validate_keywords(doc: &MarstonDocument, info: &mut Info) {
         .must_be_array(Some(ValueKind::dummy_string()))
         .in_parent(vec!["head"])
         .array_not_empty()
-        .check_value(|value, span| {
+        .check_value(|value, span, _| {
             if let Some(arr) = value.kind.as_array() {
                 for item in arr {
                     if let Some(s) = item.kind.as_string() && s.trim().is_empty() {
@@ -95,7 +96,7 @@ pub fn validate_charset(doc: &MarstonDocument, info: &mut Info) {
         .required()
         .must_be_string()
         .string_not_empty()
-        .check_value(|value, span| {
+        .check_value(|value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let normalized = s.trim().to_lowercase();
                 if !["utf-8", "utf8", "iso-8859-1", "windows-1252"].contains(&normalized.as_str()) {
@@ -123,7 +124,7 @@ pub fn validate_viewport(doc: &MarstonDocument, info: &mut Info) {
         .in_parent(vec!["head"])
         .must_be_string()
         .string_not_empty()
-        .check_value(|value, span| {
+        .check_value(|value, span, _| {
             if let Some(s) = value.kind.as_string() && !s.trim().to_lowercase().contains("width=device-width") {
                 ReportsBag::add(report!(
                     kind: ReportKind::Warning,
@@ -154,7 +155,11 @@ pub fn validate_base(doc: &MarstonDocument, info: &mut Info) {
         .in_parent(vec!["head", "base"])
         .must_be_string()
         .string_not_empty()
-        .string_valid_url(Some(ValidUrlOptions::new(&["javascript", "data"], false)))
+        .string_valid_url(Some(UrlValidation::new(
+            &["javascript", "data"],
+            false,
+            None
+        )))
         .disallowed_chars(vec!['\n', '\t', '<'])
         .validate(doc, info);
 }

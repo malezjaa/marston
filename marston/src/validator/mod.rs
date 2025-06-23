@@ -8,17 +8,21 @@ use crate::{
     info::{BlockInfo, Info},
     report,
     reports::ReportsBag,
-    validator::conditions::{Condition, ValidationContext},
+    validator::{
+        conditions::{Condition, ValidationContext},
+        url::UrlValidation,
+    },
 };
+use ::url::Url;
 use ariadne::{Color, Label, Report, ReportKind};
 use lasso::Spur;
 use rustc_hash::FxHashSet;
 use std::{collections::HashSet, fmt::format, path::PathBuf};
 use unic_langid::LanguageIdentifier;
-use url::Url;
 
 mod conditions;
 pub mod rules;
+mod url;
 
 pub type ValidationRule<T> = fn(&T, &mut Info);
 
@@ -47,11 +51,12 @@ pub struct GenericValidator {
     parent: Option<Vec<Spur>>,
     required: bool,
     type_checks: Vec<Box<dyn Fn(&Value, &Span) -> bool>>,
-    value_checks: Vec<Box<dyn Fn(&Value, &Span)>>,
+    value_checks: Vec<Box<dyn Fn(&Value, &Span, &Block)>>,
     no_children: bool,
     require_on_of_attrs: Vec<String>,
     disallowed: bool,
     required_condition: Option<Box<dyn Condition>>,
+    url_validation: Option<UrlValidation>,
 }
 
 impl GenericValidator {
@@ -67,6 +72,7 @@ impl GenericValidator {
             require_on_of_attrs: Vec::new(),
             disallowed: false,
             required_condition: None,
+            url_validation: None,
         }
     }
 
@@ -194,14 +200,14 @@ impl GenericValidator {
 
     pub fn check_value<F>(mut self, check: F) -> Self
     where
-        F: Fn(&Value, &Span) + 'static,
+        F: Fn(&Value, &Span, &Block) + 'static,
     {
         self.value_checks.push(Box::new(check));
         self
     }
 
     pub fn string_not_empty(self) -> Self {
-        self.check_value(|value, span| {
+        self.check_value(|value, span, _| {
             if let Some(s) = value.kind.as_string()
                 && s.trim().is_empty()
             {
@@ -219,7 +225,7 @@ impl GenericValidator {
 
     pub fn disallowed_chars(self, disallowed: Vec<char>) -> Self {
         let disallowed: FxHashSet<char> = disallowed.into_iter().collect();
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let chars = s.chars();
 
@@ -240,7 +246,7 @@ impl GenericValidator {
     }
 
     pub fn array_not_empty(self) -> Self {
-        self.check_value(|value, span| {
+        self.check_value(|value, span, _| {
             if let Some(array) = value.kind.as_array() {
                 if array.is_empty() {
                     ReportsBag::add(report!(
@@ -256,7 +262,7 @@ impl GenericValidator {
     }
 
     pub fn string_min_length(self, min: usize) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
                 if trimmed.len() < min {
@@ -274,7 +280,7 @@ impl GenericValidator {
     }
 
     pub fn string_min_length_error(self, min: usize) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
                 if trimmed.len() < min {
@@ -292,7 +298,7 @@ impl GenericValidator {
     }
 
     pub fn string_max_length(self, max: usize) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
                 if trimmed.len() > max {
@@ -310,7 +316,7 @@ impl GenericValidator {
     }
 
     pub fn string_max_length_error(self, max: usize) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
                 if trimmed.len() > max {
@@ -328,7 +334,7 @@ impl GenericValidator {
     }
 
     pub fn string_not_generic(self, generic_values: &'static [&'static str]) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let lower = s.trim().to_lowercase();
                 if generic_values.iter().any(|&v| lower == v) {
@@ -346,7 +352,7 @@ impl GenericValidator {
     }
 
     pub fn string_valid_language_code(self) -> Self {
-        self.check_value(|value, span| {
+        self.check_value(|value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim().to_lowercase();
 
@@ -368,7 +374,7 @@ impl GenericValidator {
     }
 
     pub fn number_min(self, min: f64) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(n) = value.kind.as_number() && n < min {
                 ReportsBag::add(report!(
                         kind: ReportKind::Error,
@@ -383,7 +389,7 @@ impl GenericValidator {
     }
 
     pub fn number_max(self, max: f64) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(n) = value.kind.as_number() && n > max {
                 ReportsBag::add(report!(
                         kind: ReportKind::Error,
@@ -409,7 +415,7 @@ impl GenericValidator {
 
             for parent in parents {
                 let found_as_blocks = parent.find_all_child_blocks(self.name);
-                let found_as_attrs = parent.get_attribute(self.name);
+                let found_as_attrs = parent.get_attribute(&name_str);
 
                 self.validate_found_items(
                     found_as_attrs,
@@ -430,7 +436,7 @@ impl GenericValidator {
         let mut found_as_block = vec![];
 
         for block in &doc.blocks {
-            if let Some(attr) = block.get_attribute(self.name) {
+            if let Some(attr) = block.get_attribute(&resolve(self.name)) {
                 found_as_attribute = Some(attr);
             }
 
@@ -469,9 +475,9 @@ impl GenericValidator {
         let mut found = false;
         if required.len() > 0 {
             for attr in &required {
-                if let Some(attr) = block.get_attribute(get_or_intern(attr)) {
+                if let Some(attr) = block.get_attribute(attr) {
                     found = true;
-                    self.validate_attribute_value(&attr.value, &attr.value.span);
+                    self.validate_attribute_value(&attr.value, &attr.value.span, block);
                 }
             }
             if !found {
@@ -500,7 +506,7 @@ impl GenericValidator {
 
         match (found_as_attribute, blocks, self.target_type) {
             (Some(attr), None, TargetType::Attribute) | (Some(attr), None, TargetType::Either) => {
-                self.validate_attribute_value(&attr.value, &attr.value.span);
+                self.validate_attribute_value(&attr.value, &attr.value.span, parent.unwrap());
             }
             (None, Some(blocks), TargetType::Block) | (None, Some(blocks), TargetType::Either) => {
                 for block in blocks {
@@ -578,7 +584,7 @@ impl GenericValidator {
                     && let Some(parent) = parent
                     && let Some(predicate) = &self.required_condition
                 {
-                    if !predicate.evaluate(&ValidationContext::new(parent)) {
+                    if !predicate.evaluate(&ValidationContext::new(parent)).result {
                         return;
                     }
 
@@ -590,7 +596,7 @@ impl GenericValidator {
         }
     }
 
-    fn validate_attribute_value(&self, value: &Value, span: &Span) {
+    fn validate_attribute_value(&self, value: &Value, span: &Span, block: &Block) {
         for type_check in &self.type_checks {
             if !type_check(value, span) {
                 return;
@@ -598,53 +604,12 @@ impl GenericValidator {
         }
 
         for value_check in &self.value_checks {
-            value_check(value, span);
+            value_check(value, span, block);
         }
     }
 
-    pub fn string_valid_url(self, options: Option<ValidUrlOptions>) -> Self {
-        let options = options.unwrap_or_default();
-
-        self.check_value(move |value, span| {
-            if let Some(s) = value.kind.as_string() {
-                let trimmed = s.trim();
-
-                match Url::parse(trimmed) {
-                    Ok(url) => {
-                        if options.disallowed_protocols.iter().any(|&p| p == url.scheme()) {
-                            ReportsBag::add(report!(
-                                kind: ReportKind::Error,
-                                message: format!("Found disallowed URL protocol: {}", url.scheme()),
-                                labels: {
-                                    span.clone() => "disallowed invalid URL" => Color::BrightRed
-                                },
-                            ));
-                        }
-                    }
-                    Err(err) => {
-                        if options.allow_paths && trimmed.parse::<PathBuf>().is_ok() {
-                            return;
-                        }
-
-                        ReportsBag::add(report!(
-                            kind: ReportKind::Error,
-                            message: format!("Value should be a valid URL or path. {err}"),
-                            labels: {
-                                span.clone() => "Potentially invalid URL or path" => Color::BrightRed
-                            },
-                            notes: [
-                                "Use absolute URLs (https://...) for external resources",
-                                "Use relative paths (/path/to/file) for local resources"
-                            ]
-                        ));
-                    }
-                }
-            }
-        })
-    }
-
     pub fn string_file_extension(self, extension: &'static str) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim();
                 let expected_ext = if extension.starts_with('.') { extension } else { &format!(".{}", extension) };
@@ -662,31 +627,9 @@ impl GenericValidator {
             }
         })
     }
-
-    pub fn string_prefer_https(self) -> Self {
-        self.check_value(|value, span| {
-            if let Some(s) = value.kind.as_string() {
-                let trimmed = s.trim();
-
-                if trimmed.starts_with("http://") {
-                    ReportsBag::add(report!(
-                        kind: ReportKind::Warning,
-                        message: "Consider using HTTPS instead of HTTP".to_string(),
-                        labels: {
-                            span.clone() => "HTTP URL detected" => Color::BrightYellow
-                        },
-                        notes: [
-                            "HTTPS provides better security for external resources",
-                            "Many browsers may block HTTP resources on HTTPS pages"
-                        ]
-                    ));
-                }
-            }
-        })
-    }
-
+    
     pub fn string_allowed_values(self, allowed: &'static [&'static str], strict: bool) -> Self {
-        self.check_value(move |value, span| {
+        self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {
                 let trimmed = s.trim().to_lowercase();
 
@@ -713,18 +656,6 @@ impl GenericValidator {
     }
 }
 
-#[derive(Default)]
-pub struct ValidUrlOptions {
-    pub disallowed_protocols: &'static [&'static str],
-    pub allow_paths: bool,
-}
-
-impl ValidUrlOptions {
-    pub fn new(disallowed_protocols: &'static [&'static str], allow_paths: bool) -> Self {
-        Self { disallowed_protocols, allow_paths }
-    }
-}
-
 pub fn validate_block_no_children(block: &Block, block_type: &str) {
     if !block.children.is_empty() {
         ReportsBag::add(report!(
@@ -748,11 +679,8 @@ pub fn validate_mutually_exclusive_attributes(
     warning_message: &str,
     notes: &[&str],
 ) {
-    let attr1_key = get_or_intern(attr1_name);
-    let attr2_key = get_or_intern(attr2_name);
-
-    let has_attr1 = block.get_attribute(attr1_key).is_some();
-    let has_attr2 = block.get_attribute(attr2_key).is_some();
+    let has_attr1 = block.get_attribute(attr1_name).is_some();
+    let has_attr2 = block.get_attribute(attr2_name).is_some();
 
     if has_attr1 && has_attr2 {
         let mut report = Report::build(ReportKind::Warning, (ReportsBag::file(), Span::default()))
@@ -776,7 +704,7 @@ pub fn validate_mutually_exclusive_attributes(
 
 pub fn validate_block_not_empty(block: &Block, block_type: &str, src_attr_name: Option<&str>) {
     let has_src = if let Some(attr_name) = src_attr_name {
-        block.get_attribute(get_or_intern(attr_name)).is_some()
+        block.get_attribute(attr_name).is_some()
     } else {
         false
     };

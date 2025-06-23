@@ -1,3 +1,5 @@
+extern crate core;
+
 #[feature(let_chains)]
 use camino::Utf8PathBuf;
 use std::ops::Range;
