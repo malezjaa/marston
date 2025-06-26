@@ -10,7 +10,7 @@
         "Sample",
         "Page"
     ],
-    .link(.href="main.css", .rel="stylesheet"),
+    .link( .rel="stylesheet", .hreflang="pl-PL"),
     .script(.src = "https://example.com/external.js", .async),
 }
 

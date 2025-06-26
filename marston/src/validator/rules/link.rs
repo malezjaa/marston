@@ -140,7 +140,7 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
                 }
             }
 
-            ConditionResult::new(false, Some("blocking attributes are only allowed on link elements with rel=\"preload\" or rel=\"stylesheet\""))
+            ConditionResult::new(false, Some("'blocking' attribute is only allowed on link elements with rel=\"preload\" or rel=\"stylesheet\""))
         }))
         .validate(doc, info);
 
@@ -150,5 +150,22 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
         .as_attribute()
         .in_parent(vec!["head", "link"])
         .string_allowed_values(&["high", "low", "medium"], true)
-        .validate(doc, info)
+        .validate(doc, info);
+
+    GenericValidator::new("hreflang")
+        .as_attribute()
+        .valid_if(AttributeEquals::new(|block| {
+            if let None = block.get_attribute("href") {
+                return ConditionResult::new(
+                    false,
+                    Some(
+                        "'hreflang' attribute is only valid on link if 'href' attribute is present",
+                    ),
+                );
+            }
+
+            ConditionResult::new(true, None)
+        }))
+        .string_valid_language_code()
+        .validate(doc, info);
 }
