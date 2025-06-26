@@ -9,7 +9,7 @@ use crate::{
     report,
     reports::ReportsBag,
     validator::{
-        conditions::{Condition, ValidationContext},
+        conditions::{AttributeEquals, Condition, ValidationContext},
         url::UrlValidation,
     },
 };
@@ -57,6 +57,7 @@ pub struct GenericValidator {
     disallowed: bool,
     required_condition: Option<Box<dyn Condition>>,
     url_validation: Option<UrlValidation>,
+    valid_if: Option<Box<dyn Condition>>,
 }
 
 impl GenericValidator {
@@ -73,6 +74,7 @@ impl GenericValidator {
             disallowed: false,
             required_condition: None,
             url_validation: None,
+            valid_if: None,
         }
     }
 
@@ -477,7 +479,7 @@ impl GenericValidator {
             for attr in &required {
                 if let Some(attr) = block.get_attribute(attr) {
                     found = true;
-                    self.validate_attribute_value(&attr.value, &attr.value.span, block);
+                    self.validate_attribute_value(&attr, block);
                 }
             }
             if !found {
@@ -506,7 +508,7 @@ impl GenericValidator {
 
         match (found_as_attribute, blocks, self.target_type) {
             (Some(attr), None, TargetType::Attribute) | (Some(attr), None, TargetType::Either) => {
-                self.validate_attribute_value(&attr.value, &attr.value.span, parent.unwrap());
+                self.validate_attribute_value(&attr, parent.unwrap());
             }
             (None, Some(blocks), TargetType::Block) | (None, Some(blocks), TargetType::Either) => {
                 for block in blocks {
@@ -596,7 +598,10 @@ impl GenericValidator {
         }
     }
 
-    fn validate_attribute_value(&self, value: &Value, span: &Span, block: &Block) {
+    fn validate_attribute_value(&self, attr: &Attribute, block: &Block) {
+        let value = &attr.value;
+        let span = &attr.value.span;
+
         for type_check in &self.type_checks {
             if !type_check(value, span) {
                 return;
@@ -605,6 +610,21 @@ impl GenericValidator {
 
         for value_check in &self.value_checks {
             value_check(value, span, block);
+        }
+
+        if let Some(predicate) = &self.valid_if {
+            let result = predicate.evaluate(&ValidationContext::new(block));
+
+            if !result.result {
+                ReportsBag::add(report!(
+                    kind: ReportKind::Error,
+                    message: format!("Attribute '{}' is not valid in this context.", resolve(attr.key.key)),
+                    labels: {
+                        span.clone() => "not valid" => Color::BrightRed
+                    },
+                    notes: [result.messages.join(". ")]
+                ))
+            }
         }
     }
 
@@ -627,7 +647,7 @@ impl GenericValidator {
             }
         })
     }
-    
+
     pub fn string_allowed_values(self, allowed: &'static [&'static str], strict: bool) -> Self {
         self.check_value(move |value, span, _| {
             if let Some(s) = value.kind.as_string() {

@@ -92,4 +92,9 @@ impl GenericValidator {
             None => false,
         }
     }
+
+    pub fn valid_if(mut self, condition: impl Condition + 'static) -> Self {
+        self.valid_if = Some(Box::new(condition));
+        self
+    }
 }

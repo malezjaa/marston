@@ -7,6 +7,7 @@ use crate::{
     validator::{
         GenericValidator, Label, Report,
         conditions::{AttributeEquals, ConditionResult},
+        rules::blocking::blocking_attribute,
         url::{RequiredExtension, UrlValidation},
     },
 };
@@ -124,4 +125,22 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
             true,
         )
         .validate(doc, info);
+
+    blocking_attribute()
+        .in_parent(vec!["head", "link"])
+        .valid_if(AttributeEquals::new(|block| {
+            if let Some(rel) = block.get_attribute("rel")
+                && let Some(string) = rel.value.kind.as_string()
+            {
+                if string == "expect" || string == "stylesheet" {
+                    return ConditionResult::new(
+                        true,
+                        None
+                    );
+                }
+            }
+
+            ConditionResult::new(false, Some("blocking attributes are only allowed on link elements with rel=\"preload\" or rel=\"stylesheet\""))
+        }))
+        .validate(doc, info)
 }
