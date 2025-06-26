@@ -658,7 +658,7 @@ impl GenericValidator {
                         kind: if strict { ReportKind::Error } else { ReportKind::Warning },
                         message: format!("Uncommon value '{}' specified", s.trim()),
                         labels: {
-                            span.clone() => "Consider if this value is appropriate" => Color::BrightYellow
+                            span.clone() => "Consider if this value is appropriate" => if strict { Color::BrightRed } else { Color::BrightYellow }
                         },
                         notes: [
                             format!("Common values are: {}", allowed.join(", ")),

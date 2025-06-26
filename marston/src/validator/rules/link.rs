@@ -142,5 +142,13 @@ pub fn validate_link(doc: &MarstonDocument, info: &mut Info) {
 
             ConditionResult::new(false, Some("blocking attributes are only allowed on link elements with rel=\"preload\" or rel=\"stylesheet\""))
         }))
+        .validate(doc, info);
+
+    GenericValidator::new("fetchpriority")
+        .must_be_string()
+        .string_not_empty()
+        .as_attribute()
+        .in_parent(vec!["head", "link"])
+        .string_allowed_values(&["high", "low", "medium"], true)
         .validate(doc, info)
 }
