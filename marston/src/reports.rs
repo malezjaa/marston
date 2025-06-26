@@ -48,7 +48,7 @@ impl ReportsBag {
     }
 
     pub fn has_errors() -> bool {
-        Self::global_mut().has_errors
+        Self::global_mut().has_errors && Self::has_reports()
     }
 
     pub fn mark_errors() {

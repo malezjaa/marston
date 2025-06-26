@@ -5,15 +5,18 @@ use crate::ast::{
 use itertools::Itertools;
 use lasso::Spur;
 
+#[derive(Debug)]
 pub struct IrDoc {
     pub root: Vec<IrNode>,
 }
 
+#[derive(Debug)]
 pub enum IrNode {
     Element(IrElement),
     Text(String),
 }
 
+#[derive(Debug)]
 pub struct IrElement {
     pub tag: Spur,
     pub attributes: Vec<IrAttribute>,
@@ -30,6 +33,7 @@ impl IrElement {
     }
 }
 
+#[derive(Debug)]
 pub struct IrAttribute {
     pub key: Spur,
     pub value: ValueKind,

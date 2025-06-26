@@ -76,7 +76,9 @@ impl Context {
 
         ReportsBag::print();
 
-        if ReportsBag::has_errors() || self.had_errors {
+        let has_errors = ReportsBag::has_errors();
+
+        if has_errors || self.had_errors {
             self.had_errors = true;
         } else {
             let ir = doc.to_html_ir();
