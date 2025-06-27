@@ -11,6 +11,7 @@ use crate::{
     validator::{
         GenericValidator, Validate, ValidationRule,
         rules::{
+            global_attributes::validate_global_attributes,
             head::{
                 disallowed_style, validate_base, validate_charset, validate_keywords,
                 validate_lang, validate_title, validate_viewport,
@@ -39,6 +40,7 @@ impl Validate for MarstonDocument {
             validate_base,
             validate_link,
             disallowed_style,
+            validate_global_attributes,
         ]
     }
 

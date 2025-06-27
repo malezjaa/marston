@@ -5,12 +5,8 @@
     .charset = "UTF-8",
     .viewport = "width=device-width, initial-scale=1.0",
     .author = "Marston Foundation",
-    .keywords = [
-        "Foundation",
-        "Sample",
-        "Page"
-    ],
-    .link( .rel="stylesheet", .hreflang="pl-PL"),
+    .keywords = ["Foundation", "Sample", "Page" ],
+    .link(.href="main.css", .rel="stylesheet"),
     .script(.src = "https://example.com/external.js", .async),
 }
 
@@ -22,7 +18,8 @@
     .main(.class = "content") {
         .h1 { "Hello World" },
         .p { "This is the main content area." },
-        .img(.src = "hero.jpg", .alt = "Hero Image")
+        .img(.src = "hero.jpg", .alt = "Hero Image"),
+        .input(.type="text", .id="off", .name="off", .autocapitalize="off"),
     },
     .footer(.class = "site-footer") {
         "© 2025 Marston Project",

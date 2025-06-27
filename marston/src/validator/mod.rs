@@ -1,7 +1,7 @@
 use crate::{
     Span,
     ast::{
-        Attribute, Block, MarstonDocument, Value, ValueKind,
+        Attribute, Block, MarstonDocument, Node, Value, ValueKind,
         ident_table::{get_or_intern, resolve},
     },
     html::{lang::is_valid_language_pattern, tags::is_unique_tag},
@@ -58,6 +58,7 @@ pub struct GenericValidator {
     required_condition: Option<Box<dyn Condition>>,
     url_validation: Option<UrlValidation>,
     valid_if: Option<Box<dyn Condition>>,
+    validate_all: bool,
 }
 
 impl GenericValidator {
@@ -75,7 +76,14 @@ impl GenericValidator {
             required_condition: None,
             url_validation: None,
             valid_if: None,
+            validate_all: false,
         }
+    }
+
+    /// validates every collected block
+    pub fn validate_all(mut self) -> Self {
+        self.validate_all = true;
+        self
     }
 
     pub fn as_attribute(mut self) -> Self {
@@ -409,8 +417,31 @@ impl GenericValidator {
         self.number_min(0.0)
     }
 
+    pub fn walk_block(&self, block: &Block, name_str: &str, info: &mut Info) {
+        if let Some(attr) = block.get_attribute(&resolve(self.name)) {
+            self.validate_attribute_value(&attr, block);
+        }
+
+        for child in &block.children {
+            match child {
+                Node::Block(child_block) => {
+                    self.walk_block(child_block, name_str, info);
+                }
+                _ => {}
+            }
+        }
+    }
+
     pub fn validate(&self, doc: &MarstonDocument, info: &mut Info) {
         let name_str = resolve(self.name);
+
+        if self.validate_all && self.target_type == TargetType::Attribute {
+            for block in &doc.blocks {
+                self.walk_block(block, &name_str.clone(), info);
+            }
+
+            return;
+        }
 
         if let Some(parent_keys) = &self.parent {
             let parents = doc.find_in_parent(parent_keys);
@@ -654,17 +685,30 @@ impl GenericValidator {
                 let trimmed = s.trim().to_lowercase();
 
                 if !allowed.iter().any(|&v| trimmed == v.to_lowercase()) {
-                    ReportsBag::add(report!(
-                        kind: if strict { ReportKind::Error } else { ReportKind::Warning },
-                        message: format!("Uncommon value '{}' specified", s.trim()),
-                        labels: {
-                            span.clone() => "Consider if this value is appropriate" => if strict { Color::BrightRed } else { Color::BrightYellow }
-                        },
-                        notes: [
-                            format!("Common values are: {}", allowed.join(", ")),
-                            "Other values may not be supported by all browsers"
-                        ]
-                    ));
+                    if strict {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Error,
+                            message: format!("Unknown value '{}' specified", s.trim()),
+                            labels: {
+                                span.clone() => "Make sure this value is correct" => Color::BrightRed
+                            },
+                            notes: [
+                                format!("Valid values are: {}", allowed.join(", ")),
+                            ]
+                        ));
+                    } else {
+                        ReportsBag::add(report!(
+                            kind: ReportKind::Error,
+                            message: format!("Uncommon value '{}' specified", s.trim()),
+                            labels: {
+                                span.clone() => "Consider if this value is appropriate" => Color::BrightYellow
+                            },
+                            notes: [
+                                format!("Common values are: {}", allowed.join(", ")),
+                                "Other values may not be supported by all browsers"
+                            ]
+                        ));
+                    }
                 }
             }
         })
